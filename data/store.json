@@ -1,0 +1,36 @@
+{
+  "users": [
+    {
+      "id": "usr_ed197848f897cc6d66dcfe8e",
+      "email": "test639257891942234492@example.com",
+      "name": "Backend Test",
+      "passwordHash": "12a62943b9e1ef47ae36fadf6bb894df:799f9473f813f89e1f9be9be7f9aad09ef11c5a493958f691419ad80bc552952b57f2020fc383afec2f3a79ea066fafa56e29bc6305a4dc4ab7ee095c50192f7",
+      "createdAt": "2026-09-23T19:39:54.388Z"
+    },
+    {
+      "id": "usr_e1bdb34b1dab44682eda8bdc",
+      "email": "api639257909225610041@example.com",
+      "name": "Saad API",
+      "passwordHash": "69335e81805c5d18e51a537cd1537326:2e179d9bc344cc3dc8d0b8d83d9437ec4a4027dda77704a497e1bd76336375299b4b3a21688734939aa03037e30af3b8869d940b037ad6ddbebe014d870ad7a3",
+      "createdAt": "2026-09-23T20:08:42.635Z"
+    }
+  ],
+  "campaigns": [],
+  "recipients": [],
+  "audit": [
+    {
+      "id": "audit_ca70effd2d75f43fc0ec4ff1",
+      "userId": "usr_e1bdb34b1dab44682eda8bdc",
+      "action": "ACCOUNT_CREATED",
+      "metadata": {},
+      "createdAt": "2026-09-23T20:08:42.635Z"
+    },
+    {
+      "id": "audit_2624afba7ea3eb13e2674abf",
+      "userId": "usr_ed197848f897cc6d66dcfe8e",
+      "action": "ACCOUNT_CREATED",
+      "metadata": {},
+      "createdAt": "2026-09-23T19:39:54.388Z"
+    }
+  ]
+}

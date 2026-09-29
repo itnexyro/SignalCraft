@@ -1,0 +1,56 @@
+--- PAGE 1 ---\nDesign System & UI Specifications (design.md)
+AI Cold Outreach Agent • Developer Aesthetic, Favicon & UI Components
+1. Design Philosophy & Aesthetic
+The platform adopts a high-precision, developer-grade aesthetic (inspired by Vercel and Linear) emphasizing dark/light mode
+contrast, clarity, and robust security indicators.
+2. Color System & Typography
+Dark Mode Tokens
+BG: #09090b | Card: #18181b
+Border: #27272a | Text: #f4f4f5
+Light Mode Tokens
+BG: #ffffff | Card: #f8fafc
+Border: #e2e8f0 | Text: #0f172a
+3. Favicon & Brand Mark Specifications
+Favicon Concept: Minimalist geometric vector featuring an automated letter pulse overlaid on a dark zinc background
+(#09090b) with blue accent (#3b82f6).
+favicon.ico (32x32px multi-resolution container)
+icon.svg (Scalable vector graphic for modern browsers)
+apple-touch-icon.png (180x180px rounded app badge)
+4. Core UI Components & Layouts
+Upload Dashboard: Drag-and-drop file dropzone with reactive column-mapping matrix.
+Campaign Preview: Side-by-side prompt tuning and recipient draft inspection table.
+Live Dispatcher: Animated progress indicators with granular status badges (`PENDING`, `SENT`, `FAILED`).
+Complete Documentation Package Page 1 of 3\n\n--- PAGE 2 ---\nSystem Architecture & Error Handling (architecture.md)
+AI Cold Outreach Agent • Backend Pipeline, Database Schema & Custom 404
+1. High-Level Architecture & Data Pipeline
+      [ Client UI ] ──► [ Next.js API Gateway ] ──► [ SheetJS & Vercel AI SDK ] │ [ Gmail SMTP ] ◄── [ 
+Background Worker & Rate Limiter ] ◄── [ PostgreSQL (Prisma) ]
+     
+2. Prisma Database Schema
+      model User { id String @id @default(cuid()) email String @unique gmailUser String gmailAppPass String // 
+Encrypted with AES-256-GCM campaigns Campaign[] } model Campaign { id String @id @default(cuid()) userId String 
+user User @relation(fields: [userId], references: [id], onDelete: Cascade) title String intentType String // 
+scholarship, b2b, web_dev promptTemplate String @db.Text recipients RecipientRow[] } model RecipientRow { id 
+String @id @default(cuid()) campaignId String campaign Campaign @relation(fields: [campaignId], references: 
+[id], onDelete: Cascade) data Json subject String? body String? @db.Text status String @default("PENDING") }
+     
+3. Custom 404 Error Page Specification (`not-found.tsx`)
+Design & UX: Styled with developer terminal styling (`font-mono`), displaying a clean error code badge (`HTTP 404: Route Not
+Found`), helpful diagnostic breadcrumbs, and quick-action buttons (*Return to Dashboard* or *Contact Engineering Support*).
+Complete Documentation Package Page 2 of 3\n\n--- PAGE 3 ---\nLegal & Compliance (Privacy Policy & Terms)
+AI Cold Outreach Agent • Data Protection, Security Standards & Terms of Service
+1. Privacy Policy Summary
+Data Collection & Security
+We collect user account information, uploaded spreadsheet datasets, and encrypted Gmail App Passwords solely for the
+execution of outreach campaigns. Zero Data Sharing: Uploaded spreadsheets and generated copy are never sold, rented, or
+utilized to train third-party public LLM models. All credentials are encrypted at rest using AES-256-GCM.
+2. Terms of Service Summary
+Acceptable Use & Compliance
+Users agree to use the AI Cold Outreach Agent in strict compliance with anti-spam regulations (including CAN-SPAM and
+GDPR where applicable). Users are solely responsible for ensuring recipient consent. Account Suspension: The platform
+reserves the right to terminate accounts engaging in abusive spam practices or exceeding safe Gmail rate limits.
+3. Compliance & Operational Guardrails
+Rate Throttling: Enforces mandatory delays between dispatches to protect sender reputation.
+Data Retention: Campaign records and recipient data can be purged permanently by the user at any time from dashboard
+settings.
+Complete Documentation Package Page 3 of 3\n

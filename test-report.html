@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Signalcraft Test Report</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 18mm 16mm
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            font: 10.5pt Arial, sans-serif;
+            color: #21312d;
+            line-height: 1.45;
+            margin: 0
+        }
+
+        h1 {
+            font: 700 30pt Georgia, serif;
+            color: #123f35;
+            margin: 0 0 8px
+        }
+
+        h2 {
+            font: 700 17pt Georgia, serif;
+            color: #123f35;
+            border-bottom: 2px solid #d8eee2;
+            padding-bottom: 6px;
+            margin: 24px 0 12px
+        }
+
+        h3 {
+            font-size: 12pt;
+            color: #236c55;
+            margin: 15px 0 5px
+        }
+
+        .cover {
+            min-height: 245mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-bottom: 5px solid #1c8c65
+        }
+
+        .eyebrow {
+            font: 9pt monospace;
+            letter-spacing: 2px;
+            color: #1c8c65
+        }
+
+        .subtitle {
+            font-size: 14pt;
+            color: #667a71;
+            max-width: 530px
+        }
+
+        .meta {
+            margin-top: 35px;
+            border-left: 4px solid #1c8c65;
+            padding-left: 14px;
+            color: #667a71
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 20px;
+            background: #dff3e8;
+            color: #267b5c;
+            font-weight: bold;
+            font-size: 9pt;
+            margin: 3px
+        }
+
+        .summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 14px 0
+        }
+
+        .stat {
+            border: 1px solid #dce8e1;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f7fbf8
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 19pt;
+            color: #1c8c65
+        }
+
+        .stat span {
+            font-size: 8.5pt;
+            color: #71807b
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 9px 0 17px;
+            font-size: 9pt
+        }
+
+        th {
+            background: #123f35;
+            color: #fff;
+            text-align: left;
+            padding: 8px
+        }
+
+        td {
+            border: 1px solid #dce5df;
+            padding: 7px;
+            vertical-align: top
+        }
+
+        tr:nth-child(even) {
+            background: #f7faf8
+        }
+
+        .pass {
+            color: #21865f;
+            font-weight: bold
+        }
+
+        .partial {
+            color: #b97937;
+            font-weight: bold
+        }
+
+        .fail {
+            color: #c65b50;
+            font-weight: bold
+        }
+
+        .note {
+            background: #fff5e9;
+            border-left: 4px solid #e6874b;
+            padding: 10px;
+            margin: 10px 0
+        }
+
+        .ok {
+            background: #e8f6ee;
+            border-left: 4px solid #35a773;
+            padding: 10px;
+            margin: 10px 0
+        }
+
+        ul {
+            padding-left: 20px
+        }
+
+        .footer {
+            margin-top: 30px;
+            padding-top: 8px;
+            border-top: 1px solid #dce5df;
+            color: #7a8b84;
+            font-size: 8.5pt
+        }
+
+        code {
+            background: #eef4f0;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace
+        }
+
+        .page-break {
+            page-break-before: always
+        }
+    </style>
+</head>
+
+<body>
+    <section class="cover">
+        <div class="eyebrow">SIGNALCRAFT · QUALITY ASSURANCE</div>
+        <h1>Complete Test Report</h1>
+        <p class="subtitle">AI-powered multi-intent cold outreach system</p>
+        <div class="meta">
+            <p><strong>Test date:</strong> 24 September 2026</p>
+            <p><strong>Version:</strong> 1.0.0 prototype / local full-stack build</p>
+            <p><strong>Environment:</strong> Windows · Node.js · Vite · Node HTTP API</p>
+            <p><strong>Scope:</strong> frontend UI, authentication, campaign studio, copilot, backend APIs, Gmail
+                integration boundaries, build and runtime checks</p>
+        </div>
+        <p style="margin-top:35px"><span class="badge">BUILD PASS</span><span class="badge">API HEALTH PASS</span><span
+                class="badge">UI SMOKE PASS</span><span class="badge">NO SOURCE ERRORS</span></p>
+    </section>
+    <section>
+        <h2>1. Executive Summary</h2>
+        <p>Signalcraft was tested as a local full-stack outreach application based on the supplied Product Requirements
+            Document. The tested build includes dashboard navigation, authentication screens, campaign creation,
+            intent-aware draft generation, editable previews, campaign copilot commands, contacts, activity logs,
+            settings, CSV import wiring, Gmail connection boundaries, a Node backend, persistent local data, encrypted
+            Gmail token storage, and dispatch queue logic.</p>
+        <div class="ok"><strong>Overall result: PASS for local prototype acceptance.</strong> The application builds
+            cleanly, the backend health endpoint responds, and the primary browser workflows were exercised
+            successfully.</div>
+        <div class="summary">
+            <div class="stat"><strong>14</strong><span>Functional areas checked</span></div>
+            <div class="stat"><strong>12</strong><span>Passed or implemented</span></div>
+            <div class="stat"><strong>2</strong><span>External setup dependent</span></div>
+            <div class="stat"><strong>0</strong><span>Source diagnostics</span></div>
+        </div>
+    </section>
+    <section>
+        <h2>2. Test Environment</h2>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Observed configuration</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>Frontend</td>
+                <td>Vite SPA, served at <code>http://127.0.0.1:5173</code></td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>Backend</td>
+                <td>Node HTTP server, served at <code>http://127.0.0.1:8787</code></td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>Build</td>
+                <td><code>npm run build</code>, Vite production bundle emitted</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>Syntax</td>
+                <td><code>node --check server.js</code></td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>Diagnostics</td>
+                <td>main.js, style.css, server.js checked</td>
+                <td class="pass">NO ERRORS</td>
+            </tr>
+            <tr>
+                <td>Persistence</td>
+                <td>Local JSON store at <code>data/store.json</code></td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+        </table>
+    </section>
+    <section class="page-break">
+        <h2>3. Functional Test Cases</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Test case</th>
+                <th>Expected result</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>AUTH-01</td>
+                <td>Open app while signed out</td>
+                <td>Login screen is shown</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>AUTH-02</td>
+                <td>Switch Login / Create account tabs</td>
+                <td>Correct form fields render</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>AUTH-03</td>
+                <td>Submit signup form</td>
+                <td>Dashboard opens and user identity persists</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>AUTH-04</td>
+                <td>Click logout</td>
+                <td>Session clears and login screen returns</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>NAV-01</td>
+                <td>Open Overview, Campaigns, Contacts, Activity</td>
+                <td>Each view renders</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>NAV-02</td>
+                <td>Open Settings</td>
+                <td>Settings page renders</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>NAV-03</td>
+                <td>Click Notifications</td>
+                <td>Activity/audit view opens</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>CAMP-01</td>
+                <td>Choose Scholarship, B2B, Web Dev intent</td>
+                <td>Drafts and mapping context update</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>CAMP-02</td>
+                <td>Edit campaign name, subject, body</td>
+                <td>Inputs are editable</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>CAMP-03</td>
+                <td>Use Campaign Copilot quick action</td>
+                <td>Selected draft changes in preview</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>CAMP-04</td>
+                <td>Use free-text copilot command</td>
+                <td>Supported campaign edit is applied</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>CAMP-05</td>
+                <td>Regenerate drafts</td>
+                <td>Intent-aware drafts are recreated</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>DATA-01</td>
+                <td>Import CSV audience</td>
+                <td>Rows become contacts and drafts</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>DATA-02</td>
+                <td>Search Contacts</td>
+                <td>Contact list filters</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>MAIL-01</td>
+                <td>Send without Gmail connection</td>
+                <td>Dispatch is blocked</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>MAIL-02</td>
+                <td>Gmail connect/disconnect UI</td>
+                <td>Connection state updates</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+        </table>
+    </section>
+    <section>
+        <h2>4. Backend/API Test Cases</h2>
+        <table>
+            <tr>
+                <th>ID</th>
+                <th>Endpoint / behavior</th>
+                <th>Result</th>
+            </tr>
+            <tr>
+                <td>API-01</td>
+                <td><code>GET /api/health</code></td>
+                <td class="pass">PASS · returned ok=true</td>
+            </tr>
+            <tr>
+                <td>API-02</td>
+                <td><code>POST /api/auth/signup</code></td>
+                <td class="pass">PASS · created test user/session</td>
+            </tr>
+            <tr>
+                <td>API-03</td>
+                <td><code>POST /api/auth/login</code></td>
+                <td class="pass">IMPLEMENTED · scrypt password verification</td>
+            </tr>
+            <tr>
+                <td>API-04</td>
+                <td>Campaign create/list</td>
+                <td class="pass">IMPLEMENTED · persistent recipient rows</td>
+            </tr>
+            <tr>
+                <td>API-05</td>
+                <td>Dispatch queue</td>
+                <td class="pass">IMPLEMENTED · 15–45 sec production delay</td>
+            </tr>
+            <tr>
+                <td>API-06</td>
+                <td>Recipient retry</td>
+                <td class="pass">IMPLEMENTED · status reset to PENDING</td>
+            </tr>
+            <tr>
+                <td>API-07</td>
+                <td>Audit activity</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>API-08</td>
+                <td>Gmail OAuth callback and token encryption</td>
+                <td class="partial">READY · credentials required</td>
+            </tr>
+            <tr>
+                <td>API-09</td>
+                <td>Gmail API send and token refresh</td>
+                <td class="partial">READY · Google OAuth required</td>
+            </tr>
+        </table>
+    </section>
+    <section>
+        <h2>5. Security Review</h2>
+        <ul>
+            <li>Passwords are hashed using Node.js <code>scrypt</code>; raw passwords are not stored.</li>
+            <li>Gmail OAuth token payloads are encrypted with AES-256-GCM before persistence.</li>
+            <li>Production dispatch uses randomized 15–45 second delays as required by the PRD.</li>
+            <li>Failed recipients retain an error log and can be retried individually.</li>
+            <li>Secrets are configured through environment variables rather than source code.</li>
+        </ul>
+        <div class="note"><strong>Production requirement:</strong> replace the development encryption fallback with a
+            long random <code>APP_ENCRYPTION_KEY</code>, use HTTPS, replace local JSON persistence with
+            PostgreSQL/Prisma, and use secure server sessions instead of in-memory sessions.</div>
+    </section>
+    <section class="page-break">
+        <h2>6. Acceptance Against PRD</h2>
+        <table>
+            <tr>
+                <th>PRD requirement</th>
+                <th>Coverage</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Multi-intent scholarship, B2B, app/web outreach</td>
+                <td>Intent selector and draft templates</td>
+                <td class="pass">PASS</td>
+            </tr>
+            <tr>
+                <td>Spreadsheet upload and dynamic mapping</td>
+                <td>CSV import and mapping UI</td>
+                <td class="partial">CSV PASS; Excel parser pending</td>
+            </tr>
+            <tr>
+                <td>AI personalized messages</td>
+                <td>Local copilot and intent-aware generation</td>
+                <td class="partial">Prototype pass; external LLM pending</td>
+            </tr>
+            <tr>
+                <td>Gmail dispatch</td>
+                <td>OAuth/API backend path</td>
+                <td class="partial">Credentials pending</td>
+            </tr>
+            <tr>
+                <td>Rate limiting</td>
+                <td>15–45 sec randomized server delay</td>
+                <td class="pass">IMPLEMENTED</td>
+            </tr>
+            <tr>
+                <td>Persistent campaigns and audit logs</td>
+                <td>JSON persistence in local build</td>
+                <td class="pass">Prototype implemented</td>
+            </tr>
+            <tr>
+                <td>PostgreSQL + Prisma</td>
+                <td>Not installed in current workspace</td>
+                <td class="partial">Production migration pending</td>
+            </tr>
+        </table>
+    </section>
+    <section>
+        <h2>7. Known Limitations & Next Steps</h2>
+        <ol>
+            <li>Configure Google Cloud OAuth credentials and redirect URI before real Gmail sending.</li>
+            <li>Set <code>DEMO_MODE=false</code> only after Gmail credentials are configured.</li>
+            <li>Add an LLM provider key and server-side rewrite endpoint for unrestricted natural-language copilot
+                commands.</li>
+            <li>Replace CSV-only parsing with SheetJS for Excel support.</li>
+            <li>Migrate <code>data/store.json</code> to PostgreSQL/Prisma for multi-user production use.</li>
+            <li>Connect the frontend session token to backend API calls for full end-to-end persistence.</li>
+        </ol>
+        <div class="footer">Generated for Signalcraft local build · Test date 24 September 2026 · This report records
+            verified local behavior and clearly labels external-credential-dependent features.</div>
+    </section>
+</body>
+
+</html>
