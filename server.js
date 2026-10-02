@@ -1,32 +1,20 @@
 import http from 'node:http';
 import crypto from 'node:crypto';
-import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readStore, writeStore } from './src/storage.js';
 
-const root = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.join(root, 'data');
-const storePath = path.join(dataDir, 'store.json');
 const port = Number(process.env.PORT || 8787);
 const frontendOrigin = process.env.FRONTEND_ORIGIN || 'http://127.0.0.1:5173';
 const encryptionSecret = process.env.APP_ENCRYPTION_KEY;
 if (process.env.NODE_ENV === 'production' && (!encryptionSecret || encryptionSecret === 'replace-with-a-long-random-secret')) throw new Error('APP_ENCRYPTION_KEY must be set in production');
 const encryptionKey = crypto.createHash('sha256').update(encryptionSecret || 'change-this-development-key').digest();
-const sessions = new Map();
-
 const intents = {
   scholarship: 'academic inquiry letters',
   b2b: 'partnership conversations',
   web_dev: 'digital transformation pitches'
 };
 
-const initialStore = { users: [], campaigns: [], recipients: [], audit: [] };
-
-async function readStore() {
-  try { return JSON.parse(await fs.readFile(storePath, 'utf8')); }
-  catch { await fs.mkdir(dataDir, { recursive: true }); await writeStore(initialStore); return structuredClone(initialStore); }
-}
-async function writeStore(store) { await fs.mkdir(dataDir, { recursive: true }); await fs.writeFile(storePath, JSON.stringify(store, null, 2)); }
 function id(prefix) { return `${prefix}_${crypto.randomBytes(12).toString('hex')}`; }
 function json(res, status, body, request = {}) {
   const origin = request.headers && request.headers.origin ? request.headers.origin : frontendOrigin;
@@ -44,7 +32,18 @@ function encrypt(value) { const iv = crypto.randomBytes(12); const cipher = cryp
 function decrypt(value) { const [iv, tag, encrypted] = value.split(':'); const decipher = crypto.createDecipheriv('aes-256-gcm', encryptionKey, Buffer.from(iv, 'hex')); decipher.setAuthTag(Buffer.from(tag, 'hex')); return Buffer.concat([decipher.update(Buffer.from(encrypted, 'hex')), decipher.final()]).toString('utf8'); }
 function token() { return crypto.randomBytes(32).toString('hex'); }
 async function body(req) { let raw = ''; for await (const chunk of req) raw += chunk; return raw ? JSON.parse(raw) : {}; }
-function currentUser(req, store) { const auth = req.headers.authorization || ''; const userId = sessions.get(auth.replace('Bearer ', '')); return store.users.find(user => user.id === userId); }
+function sessionId(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+function getSessionUserId(store, value) {
+  const session = store.sessions.find(item => item.id === sessionId(value));
+  return session && session.expiresAt > Date.now() ? session.userId : undefined;
+}
+function setSession(store, value, userId, lifetimeMs = 30 * 24 * 60 * 60 * 1000) {
+  const id = sessionId(value);
+  store.sessions = store.sessions.filter(item => item.id !== id && item.expiresAt > Date.now());
+  store.sessions.push({ id, userId, expiresAt: Date.now() + lifetimeMs });
+}
+function deleteSession(store, value) { store.sessions = store.sessions.filter(item => item.id !== sessionId(value)); }
+function currentUser(req, store) { const auth = req.headers.authorization || ''; const userId = getSessionUserId(store, auth.replace('Bearer ', '')); return store.users.find(user => user.id === userId); }
 function audit(store, userId, action, metadata = {}) { store.audit.unshift({ id: id('audit'), userId, action, metadata, createdAt: new Date().toISOString() }); }
 const geminiFields = {
   scholarship: ['ApplicantName', 'University', 'Professor', 'FieldOfStudy', 'PastResearch'],
@@ -129,9 +128,10 @@ export async function handleRequest(req, res) {
     if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'signalcraft-api', time: new Date().toISOString() }, req);
     if (req.method === 'GET' && url.pathname === '/api/gmail/callback') {
       const stateToken = url.searchParams.get('state');
-      const userId = sessions.get(`oauth:${stateToken}`);
+      const userId = getSessionUserId(store, `oauth:${stateToken}`);
       if (!userId) return json(res, 400, { error: 'Invalid OAuth state' }, req);
-      sessions.delete(`oauth:${stateToken}`);
+      deleteSession(store, `oauth:${stateToken}`);
+      await writeStore(store);
       if (url.searchParams.has('error')) return json(res, 400, { error: 'Google authorization was not completed' }, req);
       const code = url.searchParams.get('code');
       if (!code) return json(res, 400, { error: 'Missing OAuth code' }, req);
@@ -148,10 +148,10 @@ export async function handleRequest(req, res) {
     if (req.method === 'POST' && url.pathname === '/api/auth/signup') {
       const input = await body(req); if (!input.email || !input.password || input.password.length < 8) return json(res, 400, { error: 'Email and an 8-character password are required' }, req);
       if (store.users.some(user => user.email === input.email.toLowerCase())) return json(res, 409, { error: 'An account already exists for this email' }, req);
-      const user = { id: id('usr'), email: input.email.toLowerCase(), name: input.name || 'User', passwordHash: await hashPassword(input.password), createdAt: new Date().toISOString() }; store.users.push(user); audit(store, user.id, 'ACCOUNT_CREATED'); await writeStore(store); const session = token(); sessions.set(session, user.id); return json(res, 201, { token: session, user: { id: user.id, email: user.email, name: user.name } }, req);
+      const user = { id: id('usr'), email: input.email.toLowerCase(), name: input.name || 'User', passwordHash: await hashPassword(input.password), createdAt: new Date().toISOString() }; store.users.push(user); audit(store, user.id, 'ACCOUNT_CREATED'); const session = token(); setSession(store, session, user.id); await writeStore(store); return json(res, 201, { token: session, user: { id: user.id, email: user.email, name: user.name } }, req);
     }
     if (req.method === 'POST' && url.pathname === '/api/auth/login') {
-      const input = await body(req); const user = store.users.find(item => item.email === String(input.email || '').toLowerCase()); if (!user || !(await verifyPassword(input.password || '', user.passwordHash))) return json(res, 401, { error: 'Invalid email or password' }, req); const session = token(); sessions.set(session, user.id); return json(res, 200, { token: session, user: { id: user.id, email: user.email, name: user.name } }, req);
+      const input = await body(req); const user = store.users.find(item => item.email === String(input.email || '').toLowerCase()); if (!user || !(await verifyPassword(input.password || '', user.passwordHash))) return json(res, 401, { error: 'Invalid email or password' }, req); const session = token(); setSession(store, session, user.id); await writeStore(store); return json(res, 200, { token: session, user: { id: user.id, email: user.email, name: user.name } }, req);
     }
     const user = currentUser(req, store); if (!user) return json(res, 401, { error: 'Authentication required' }, req);
     if (req.method === 'GET' && url.pathname === '/api/me') return json(res, 200, { id: user.id, email: user.email, name: user.name, gmailConnected: Boolean(user.gmailTokens), geminiConfigured: Boolean(process.env.GEMINI_API_KEY) }, req);
@@ -192,7 +192,7 @@ export async function handleRequest(req, res) {
     if (parts[0] === 'api' && parts[1] === 'campaigns' && parts[2] && parts[3] === 'dispatch' && req.method === 'POST') { const campaign = store.campaigns.find(item => item.id === parts[2] && item.userId === user.id); if (!campaign) return json(res, 404, { error: 'Campaign not found' }, req); if (!user.gmailTokens) return json(res, 400, { error: 'Connect Gmail before dispatching' }, req); const queue = store.recipients.filter(row => row.campaignId === campaign.id && row.status !== 'SENT').slice(0, 50); audit(store, user.id, 'DISPATCH_STARTED', { campaignId: campaign.id, count: queue.length }); await writeStore(store); dispatchQueue(store, user, campaign, queue); return json(res, 202, { queued: queue.length, message: 'Dispatch queue started' }, req); }
     if (parts[0] === 'api' && parts[1] === 'recipients' && parts[3] === 'retry' && req.method === 'POST') { const recipient = store.recipients.find(row => row.id === parts[2]); if (!recipient) return json(res, 404, { error: 'Recipient not found' }, req); recipient.status = 'PENDING'; recipient.errorLog = null; await writeStore(store); return json(res, 200, recipient, req); }
     if (req.method === 'GET' && url.pathname === '/api/activity') return json(res, 200, store.audit.filter(item => item.userId === user.id), req);
-    if (req.method === 'GET' && url.pathname === '/api/gmail/connect') { if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) return json(res, 503, { error: 'Google OAuth is not configured', setup: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] }, req); const stateToken = token(); sessions.set(`oauth:${stateToken}`, user.id); const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: process.env.GOOGLE_REDIRECT_URI, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/gmail.send', state: stateToken }); return json(res, 200, { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` }, req); }
+    if (req.method === 'GET' && url.pathname === '/api/gmail/connect') { if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) return json(res, 503, { error: 'Google OAuth is not configured', setup: ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'GOOGLE_REDIRECT_URI'] }, req); const stateToken = token(); setSession(store, `oauth:${stateToken}`, user.id, 10 * 60 * 1000); await writeStore(store); const params = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID, redirect_uri: process.env.GOOGLE_REDIRECT_URI, response_type: 'code', access_type: 'offline', prompt: 'consent', scope: 'https://www.googleapis.com/auth/gmail.send', state: stateToken }); return json(res, 200, { url: `https://accounts.google.com/o/oauth2/v2/auth?${params}` }, req); }
     return json(res, 404, { error: 'Route not found' }, req);
   } catch (error) { console.error(error); return json(res, error.status || 500, { error: error.status ? error.message : 'Internal server error' }, req); }
 }
