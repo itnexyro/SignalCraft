@@ -2,16 +2,52 @@ import './style.css';
 import { resolveApiBase } from './config.js';
 
 const intents = {
-  scholarship: { label: 'Scholarship outreach', icon: '✦', description: 'Academic inquiry letters', fields: ['ApplicantName', 'University', 'Professor', 'FieldOfStudy', 'PastResearch'] },
-  b2b: { label: 'B2B proposal', icon: '◈', description: 'Partnership conversations', fields: ['ContactName', 'Company', 'Role', 'BusinessNeed', 'Industry'] },
-  web_dev: { label: 'App & web development', icon: '⌘', description: 'Digital transformation pitches', fields: ['ClientName', 'Company', 'WebsiteAuditNote', 'TechStack', 'BusinessGoal'] }
+  web_dev: { label: 'Web & App Modernization', icon: '⌘', description: 'Website audit & scaling pitches', fields: ['ClientName', 'Company', 'WebsiteAuditNote', 'TechStack', 'BusinessGoal'] },
+  b2b: { label: 'B2B Growth & Ops Scaling', icon: '◈', description: 'Bottleneck solutions & workflow automation', fields: ['ContactName', 'Company', 'Role', 'BusinessNeed', 'Industry'] },
+  scholarship: { label: 'Scholarship outreach', icon: '✦', description: 'Academic inquiry letters', fields: ['ApplicantName', 'University', 'Professor', 'FieldOfStudy', 'PastResearch'] }
 };
 
 const sampleRows = [
-  { ApplicantName: 'Maya Chen', University: 'University of Toronto', Professor: 'Dr. Elena Vasquez', FieldOfStudy: 'Computational Biology', PastResearch: 'Protein folding models for rare disease research', email: 'elena.vasquez@utoronto.ca' },
-  { ApplicantName: 'Jon Bell', University: 'Georgia Tech', Professor: 'Dr. Marcus Reed', FieldOfStudy: 'Human-computer interaction', PastResearch: 'Accessible interfaces for older adults', email: 'marcus.reed@gatech.edu' },
-  { ApplicantName: 'Amina Okafor', University: 'University of Edinburgh', Professor: 'Dr. Priya Nair', FieldOfStudy: 'Climate informatics', PastResearch: 'Satellite data and coastal resilience', email: 'priya.nair@ed.ac.uk' },
-  { ApplicantName: 'Leo Martinez', University: 'UC San Diego', Professor: 'Dr. Samir Patel', FieldOfStudy: 'Robotics', PastResearch: 'Low-cost tactile sensing systems', email: 'samir.patel@ucsd.edu' }
+  {
+    ClientName: 'Sarah Jenkins',
+    Company: 'Apex Logistics Global',
+    Role: 'Chief Technology Officer',
+    WebsiteAuditNote: 'Slow portal load times (4.2s), non-responsive customer tracking dashboard, and checkout drop-offs',
+    TechStack: 'Legacy PHP & Monolithic WordPress',
+    BusinessNeed: 'Modernize client portal to real-time React/Next.js dashboard and automate shipment notifications',
+    BusinessGoal: 'Upscale monthly platform bookings by 35% and cut support tickets',
+    email: 'sarah.jenkins@apexlogistics.io'
+  },
+  {
+    ClientName: 'David Miller',
+    Company: 'FinEdge Capital',
+    Role: 'Head of Growth & Operations',
+    WebsiteAuditNote: 'Outdated landing page UI, lack of automated client onboarding flow, and mobile conversion friction',
+    TechStack: 'Static Webflow + manual spreadsheets',
+    BusinessNeed: 'Build automated SaaS web application with secure client authentication and automated payment gateway',
+    BusinessGoal: 'Scale inbound investor conversion by 3x and automate underwriting workflows',
+    email: 'david.m@finedgecap.com'
+  },
+  {
+    ClientName: 'Elena Rostova',
+    Company: 'OmniHealth Solutions',
+    Role: 'Founder & CEO',
+    WebsiteAuditNote: 'Fragmented patient booking flow, security certificate alerts, and zero mobile app sync',
+    TechStack: 'Custom legacy code with recurring database bottlenecks',
+    BusinessNeed: 'Re-engineer cloud web application with scalable serverless architecture and HIPAA-compliant scheduling',
+    BusinessGoal: 'Upscale business operations to 100k active monthly users with 99.9% uptime',
+    email: 'elena@omnihealth.co'
+  },
+  {
+    ClientName: 'Marcus Vance',
+    Company: 'UrbanSpace Real Estate',
+    Role: 'Managing Director',
+    WebsiteAuditNote: 'No interactive property maps, high bounce rate on mobile listings, and slow search filters',
+    TechStack: 'Legacy custom CMS',
+    BusinessNeed: 'Deploy ultra-fast modern web portal with interactive 3D virtual tours and AI property match',
+    BusinessGoal: 'Double lead generation and upscale agency transaction volume',
+    email: 'marcus@urbanspacerealty.com'
+  }
 ];
 
 function nameFromEmail(email = '') {
@@ -22,15 +58,15 @@ function nameFromEmail(email = '') {
 function getContactName(row) {
   if (!row) return 'Partner';
   return (
-    row.Professor ||
-    row.ContactName ||
     row.ClientName ||
+    row.ContactName ||
+    row.Professor ||
     row.ApplicantName ||
     row.Name ||
     row.name ||
     row.FullName ||
     row.RecipientName ||
-    (row.email ? row.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Contact')
+    (row.email ? row.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Partner')
   );
 }
 
@@ -115,11 +151,11 @@ const state = {
   authenticated: localStorage.getItem('signalcraft-auth') === 'true' || Boolean(localStorage.getItem('signalcraft-api-token')),
   apiToken: localStorage.getItem('signalcraft-api-token') || '',
   authMode: 'login',
-  userName: savedUserName && savedUserName !== 'Alex Smith' && savedAuthEmail !== 'alex@example.com' ? savedUserName : (savedAuthEmail && savedAuthEmail !== 'alex@example.com' ? nameFromEmail(savedAuthEmail) : 'User'),
+  userName: savedUserName && savedUserName !== 'Alex Smith' && savedAuthEmail !== 'alex@example.com' ? savedUserName : (savedAuthEmail && savedAuthEmail !== 'alex@example.com' ? nameFromEmail(savedAuthEmail) : 'Muhammad Saad Iqbal'),
   authEmail: savedAuthEmail,
   activeView: 'overview',
-  intent: 'scholarship',
-  campaignName: 'New outreach campaign',
+  intent: 'web_dev',
+  campaignName: 'Nexyro IT - Client Growth & Web Transformation',
   campaignList: [],
   activityList: [],
   rows: [...sampleRows],
@@ -137,7 +173,7 @@ const state = {
   profileMenuOpen: false,
   copilotOpen: false,
   theme: localStorage.getItem('signalcraft-theme') || 'dark',
-  assistantMessages: [{ role: 'assistant', text: 'I can edit this campaign for you. Try “make it shorter”, “make it more formal”, or “switch to B2B”.' }],
+  assistantMessages: [{ role: 'assistant', text: 'Nexyro IT Copilot ready. Try “emphasize mobile speed audit”, “make it more concise”, or “focus on custom software”.' }],
   toast: ''
 };
 
@@ -148,24 +184,31 @@ function applyTheme() {
 
 function makeDraft(row, intent) {
   const person = getContactName(row);
-  const sender = state.userName || 'The Team';
-  if (intent === 'scholarship') return {
-    to: row.email || 'recipient@example.com',
+  const company = row.Company || 'your business';
+  const auditNote = row.WebsiteAuditNote || 'a few technical friction points on your web experience that may be impacting conversion';
+  const techStack = row.TechStack || 'current digital infrastructure';
+  const businessNeed = row.BusinessNeed || 'modernizing core workflows and eliminating bottlenecks';
+  const businessGoal = row.BusinessGoal || 'scale client acquisition and upscale revenue';
+
+  if (intent === 'web_dev') return {
+    to: row.email || 'client@example.com',
     name: person,
-    subject: `A question about ${row.FieldOfStudy || 'your research'} at ${row.University || 'your institution'}`,
-    body: `Hi ${person},\n\nI recently came across your work in ${row.FieldOfStudy || 'your field'} and was especially interested in ${row.PastResearch || 'your research'}.\n\nI am exploring next steps in this area and would value your perspective on the questions your group is prioritising this year. Would you be open to a brief conversation?\n\nWarmly,\n${sender}`
+    subject: `Opportunities to upscale ${company}'s web platform & performance`,
+    body: `Hi ${person},\n\nI spent some time reviewing ${company}'s digital presence and noticed ${auditNote}.\n\nAt Nexyro IT, we help ambitious companies solve these exact bottlenecks—upgrading ${techStack} into high-speed, modern, scalable web architectures built to ${businessGoal}.\n\nWe would love to share a quick 3-point action plan tailored for ${company}. Would a 10-minute working call next week be worth exploring?\n\nBest regards,\nMuhammad Saad Iqbal\nNexyro IT Team\nhttps://nexyro-it-website.vercel.app/`
   };
+
   if (intent === 'b2b') return {
     to: row.email || 'partner@example.com',
     name: person,
-    subject: `A practical idea for ${row.Company || 'your team'}`,
-    body: `Hi ${person},\n\nI noticed ${row.Company || 'your team'} is working in ${row.Industry || 'a fast-moving market'}. We help teams turn ${row.BusinessNeed || 'complex operational priorities'} into focused, measurable growth.\n\nI have one idea that could be useful for your roadmap. Is a 15-minute conversation next week worth exploring?\n\nBest regards,\n${sender}`
+    subject: `Scaling ${company}'s operational growth & system efficiency`,
+    body: `Hi ${person},\n\nI noticed ${company} is rapidly growing, but scaling operations often brings challenges around ${businessNeed}.\n\nNexyro IT specializes in engineering custom software, automated web portals, and scalable cloud infrastructure designed to remove these hurdles and upscale your business revenue.\n\nWe have a few concrete ideas tailored for ${company}. Would you be open to a brief 15-minute introductory conversation next Tuesday?\n\nBest regards,\nMuhammad Saad Iqbal\nNexyro IT Team\nhttps://nexyro-it-website.vercel.app/`
   };
+
   return {
-    to: row.email || 'client@example.com',
+    to: row.email || 'recipient@example.com',
     name: person,
-    subject: `One opportunity I spotted on ${row.Company || 'your digital experience'}`,
-    body: `Hi ${person},\n\nI spent a few minutes looking at ${row.Company || 'your product'} and noticed ${row.WebsiteAuditNote || 'an opportunity to make the customer journey clearer'}.\n\nOur team helps ambitious companies modernise the parts of their digital experience that quietly hold growth back. Your ${row.TechStack || 'current stack'} looks like a strong foundation.\n\nWould a short working session be useful?\n\nBest regards,\n${sender}`
+    subject: `Inquiry regarding research collaboration with ${company}`,
+    body: `Hi ${person},\n\nI recently came across your specialized work in ${row.FieldOfStudy || 'your domain'} and was especially impressed by ${row.PastResearch || 'your recent initiatives'}.\n\nOur team is exploring impactful technology applications in this space and would value the opportunity to exchange perspective on upcoming milestones.\n\nWould you be open to a brief conversation?\n\nBest regards,\nMuhammad Saad Iqbal\nNexyro IT Team\nhttps://nexyro-it-website.vercel.app/`
   };
 }
 
@@ -176,11 +219,11 @@ generateDrafts();
 function escapeHtml(value = '') { return value.replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
 
 function userInitials(name = '') {
-  if (!name || name.toLowerCase() === 'there' || name.toLowerCase() === 'contact') return 'CT';
+  if (!name || name.toLowerCase() === 'there' || name.toLowerCase() === 'contact' || name.toLowerCase() === 'partner') return 'NX';
   const clean = name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').trim();
   const parts = clean.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return (parts[0] ? parts[0].slice(0, 2) : 'CT').toUpperCase();
+  return (parts[0] ? parts[0].slice(0, 2) : 'NX').toUpperCase();
 }
 
 function showToast(message) { state.toast = message; render(); setTimeout(() => { state.toast = ''; render(); }, 2800); }
@@ -192,7 +235,7 @@ function parseCsv(text) {
   return lines.slice(1).map(line => { const values = line.split(',').map(value => value.trim()); return Object.fromEntries(headers.map((header, index) => [header, values[index] || ''])); });
 }
 async function persistCampaign() {
-  return apiRequest('/campaigns', { method: 'POST', body: JSON.stringify({ title: state.campaignName, intentType: state.intent, rows: state.rows, drafts: state.drafts.map(({ subject, body }) => ({ subject, body })), promptTemplate: 'Personalized outreach draft generated from mapped audience fields.' }) });
+  return apiRequest('/campaigns', { method: 'POST', body: JSON.stringify({ title: state.campaignName, intentType: state.intent, rows: state.rows, drafts: state.drafts.map(({ subject, body }) => ({ subject, body })), promptTemplate: 'Nexyro IT high-converting outreach draft.' }) });
 }
 async function generateDraftsWithGemini() {
   const result = await apiRequest('/drafts/generate', { method: 'POST', body: JSON.stringify({ intentType: state.intent, rows: state.rows }) });
@@ -204,15 +247,13 @@ function runAssistantCommand(command) {
   const text = command.trim().toLowerCase();
   const draft = state.drafts[state.selectedDraft];
   if (!draft) return 'Select a draft first, then I can edit it.';
-  if (text.includes('short')) draft.body = `${draft.body.split('\n\n').slice(0, 2).join('\n\n')}\n\nWould you be open to a brief conversation?`;
-  else if (text.includes('formal')) { draft.body = draft.body.replace(/^Hi /, 'Dear ').replace(/Best,|Warmly,/, 'Kind regards,'); }
-  else if (text.includes('friendly') || text.includes('casual')) { draft.body = draft.body.replace(/^Dear /, 'Hi ').replace('Kind regards,', 'Warmly,'); }
-  else if (text.includes('subject')) draft.subject = `A thoughtful idea for ${state.rows[state.selectedDraft]?.Company || state.rows[state.selectedDraft]?.University || 'your team'}`;
+  if (text.includes('short')) draft.body = `${draft.body.split('\n\n').slice(0, 2).join('\n\n')}\n\nWould you be open to a brief conversation?\n\nBest regards,\nMuhammad Saad Iqbal\nNexyro IT Team\nhttps://nexyro-it-website.vercel.app/`;
+  else if (text.includes('formal')) { draft.body = draft.body.replace(/^Hi /, 'Dear '); }
   else if (text.includes('b2b')) { state.intent = 'b2b'; generateDrafts(); }
-  else if (text.includes('scholar')) { state.intent = 'scholarship'; generateDrafts(); }
-  else if (text.includes('web') || text.includes('development')) { state.intent = 'web_dev'; generateDrafts(); }
+  else if (text.includes('web')) { state.intent = 'web_dev'; generateDrafts(); }
+  else if (text.includes('subject')) draft.subject = `Upscaling ${state.rows[state.selectedDraft]?.Company || 'your platform'} - Nexyro IT`;
   else if (text.includes('rename') || text.includes('name')) { const name = command.split(':').slice(1).join(':').trim(); if (name) state.campaignName = name; }
-  else return 'Try: “make it shorter”, “make it formal”, “rewrite subject”, “switch to B2B”, or “rename: Fall faculty outreach”.';
+  else return 'Try: “make it shorter”, “focus on website speed”, “rewrite subject”, “switch to B2B”, or “rename: Fall growth campaign”.';
   return 'Done. I updated the campaign preview. Review the change before sending.';
 }
 async function applyAssistantCommand(command) {
@@ -233,7 +274,7 @@ async function applyAssistantCommand(command) {
     render();
     return;
   }
-  const response = { role: 'assistant', text: 'Revising draft with Gemini...' };
+  const response = { role: 'assistant', text: 'Revising draft with Gemini AI...' };
   state.assistantMessages.push(response);
   render();
   try {
@@ -248,12 +289,12 @@ async function applyAssistantCommand(command) {
 
 function authView() {
   const signup = state.authMode === 'signup';
-  return `<main class="auth-shell"><div class="auth-brand"><span class="brand-mark">✳</span><strong>signalcraft</strong></div><section class="auth-card"><div class="auth-intro"><p class="eyebrow">OUTREACH OPERATIONS</p><h1>${signup ? 'Build your outreach workspace.' : 'Welcome back.'}</h1><p>${signup ? 'Create an account to turn thoughtful outreach into a repeatable system.' : 'Sign in to continue building conversations that feel human.'}</p></div><div class="auth-tabs"><button class="auth-tab ${!signup ? 'active' : ''}" data-auth-mode="login">Log in</button><button class="auth-tab ${signup ? 'active' : ''}" data-auth-mode="signup">Create account</button></div><form class="auth-form" data-auth-form><label>Email address<input type="email" name="email" placeholder="you@company.com" required value="${escapeHtml(state.authEmail)}" /></label>${signup ? '<label>Your name<input type="text" name="name" placeholder="Enter your name" required /></label>' : ''}<label>Password<input type="password" name="password" placeholder="At least 8 characters" minlength="8" required /></label><button class="primary-button auth-submit" type="submit">${signup ? 'Create workspace' : 'Log in'} <span>→</span></button></form></section></main>`;
+  return `<main class="auth-shell"><div class="auth-brand"><span class="brand-mark">✳</span><strong>signalcraft</strong></div><section class="auth-card"><div class="auth-intro"><p class="eyebrow">OUTREACH OPERATIONS</p><h1>${signup ? 'Build your outreach workspace.' : 'Welcome back.'}</h1><p>${signup ? 'Create an account to turn thoughtful outreach into a repeatable system.' : 'Sign in to continue building conversations that feel human.'}</p></div><div class="auth-tabs"><button class="auth-tab ${!signup ? 'active' : ''}" data-auth-mode="login">Log in</button><button class="auth-tab ${signup ? 'active' : ''}" data-auth-mode="signup">Create account</button></div><form class="auth-form" data-auth-form><label>Email address<input type="email" name="email" placeholder="you@company.com" required value="${escapeHtml(state.authEmail)}" /></label>${signup ? '<label>Your name<input type="text" name="name" placeholder="Enter your name" required />' : ''}<label>Password<input type="password" name="password" placeholder="At least 8 characters" minlength="8" required /></label><button class="primary-button auth-submit" type="submit">${signup ? 'Create workspace' : 'Log in'} <span>→</span></button></form></section></main>`;
 }
 
 function assistantView() {
   if (!state.copilotOpen) return '';
-  return `<aside class="assistant-card"><div class="assistant-heading"><div><span class="eyebrow">CAMPAIGN COPILOT</span><h2>Ask AI to edit</h2></div><button class="assistant-close-btn" data-action="toggle-copilot" title="Close Copilot">✕</button></div><div class="assistant-messages">${state.assistantMessages.map(message => `<div class="assistant-message ${message.role}">${escapeHtml(message.text)}</div>`).join('')}</div><div class="assistant-suggestions"><button data-assistant="Make it shorter">Shorter</button><button data-assistant="Make it more formal">Formal</button><button data-assistant="Rewrite the subject">New subject</button></div><form class="assistant-form" data-assistant-form><input name="command" placeholder="Tell AI what to change..." autocomplete="off" /><button aria-label="Send instruction">↑</button></form><p class="assistant-note">Edits apply to the selected draft.</p></aside>`;
+  return `<aside class="assistant-card"><div class="assistant-heading"><div><span class="eyebrow">CAMPAIGN COPILOT</span><h2>Ask AI to edit</h2></div><button class="assistant-close-btn" data-action="toggle-copilot" title="Close Copilot">✕</button></div><div class="assistant-messages">${state.assistantMessages.map(message => `<div class="assistant-message ${message.role}">${escapeHtml(message.text)}</div>`).join('')}</div><div class="assistant-suggestions"><button data-assistant="Make it shorter">Shorter</button><button data-assistant="Emphasize speed & conversion">Speed audit</button><button data-assistant="Rewrite the subject">New subject</button></div><form class="assistant-form" data-assistant-form><input name="command" placeholder="Tell AI what to change..." autocomplete="off" /><button aria-label="Send instruction">↑</button></form><p class="assistant-note">Edits apply to the selected draft.</p></aside>`;
 }
 
 function settingsView() {
@@ -263,12 +304,12 @@ function settingsView() {
 function legalPageView(kind) {
   const isPrivacy = kind === 'privacy';
   const title = isPrivacy ? 'Privacy Policy' : 'Terms of Service';
-  const summary = isPrivacy ? 'We store account information, campaign contacts, and Gmail OAuth credentials encrypted at rest. Contact fields and revision instructions are sent to Google Gemini to generate or revise email drafts. Review Google API data terms before using personal or confidential information.' : 'Users agree to use the platform in compliance with CAN-SPAM, GDPR, and other applicable anti-spam regulations. The platform reserves the right to suspend abusive accounts or those exceeding safe Gmail rate limits.';
-  return `<section class="page legal-page"><div class="page-heading"><div><p class="eyebrow">LEGAL</p><h1>${title}</h1><p class="subheading">Security, compliance, and operating guardrails.</p></div><button class="primary-button" data-view="settings">Back to settings</button></div><div class="legal-shell"><div class="legal-card"><div class="terminal-badge">${isPrivacy ? 'DATA PROTECTION' : 'USAGE TERMS'}</div><p>${summary}</p><h3>Core requirements</h3><ul>${isPrivacy ? '<li>Account data and uploaded spreadsheets are stored securely.</li><li>Credentials are encrypted at rest using AES-256-GCM.</li><li>Zero data sharing with public model providers.</li>' : '<li>Users remain responsible for recipient consent and anti-spam compliance.</li><li>Campaign records and recipient data can be purged from settings.</li><li>Abusive or unsafe sending practices may trigger suspension.</li>'}</ul></div></div></section>`;
+  const summary = isPrivacy ? 'We store account information, campaign contacts, and Gmail OAuth credentials encrypted at rest. Contact fields and revision instructions are sent to Google Gemini to generate or revise email drafts.' : 'Users agree to use the platform in compliance with CAN-SPAM, GDPR, and other applicable anti-spam regulations.';
+  return `<section class="page legal-page"><div class="page-heading"><div><p class="eyebrow">LEGAL</p><h1>${title}</h1><p class="subheading">Security, compliance, and operating guardrails.</p></div><button class="primary-button" data-view="settings">Back to settings</button></div><div class="legal-shell"><div class="legal-card"><div class="terminal-badge">${isPrivacy ? 'DATA PROTECTION' : 'USAGE TERMS'}</div><p>${summary}</p><h3>Core requirements</h3><ul>${isPrivacy ? '<li>Account data and uploaded spreadsheets are stored securely in Firestore.</li><li>Credentials are encrypted at rest using AES-256-GCM.</li>' : '<li>Users remain responsible for recipient consent and anti-spam compliance.</li>'}</ul></div></div></section>`;
 }
 
 function notFoundView() {
-  return `<section class="page not-found-page"><div class="terminal-shell"><div class="terminal-header"><span class="terminal-dot red"></span><span class="terminal-dot yellow"></span><span class="terminal-dot green"></span><span class="terminal-title">signalcraft / error</span></div><div class="terminal-body"><div class="status-badge">HTTP 404: Route Not Found</div><h1>That route does not exist.</h1><p>Use the dashboard to return to your active campaigns or contact engineering support.</p><div class="terminal-actions"><button class="primary-button" data-view="overview">Return to dashboard</button><button class="outline-button" data-action="notifications">Contact engineering</button></div></div></div></section>`;
+  return `<section class="page not-found-page"><div class="terminal-shell"><div class="terminal-header"><span class="terminal-dot red"></span><span class="terminal-dot yellow"></span><span class="terminal-dot green"></span><span class="terminal-title">signalcraft / error</span></div><div class="terminal-body"><div class="status-badge">HTTP 404: Route Not Found</div><h1>That route does not exist.</h1><p>Use the dashboard to return to your active campaigns.</p><div class="terminal-actions"><button class="primary-button" data-view="overview">Return to dashboard</button></div></div></div></section>`;
 }
 
 function render() {
@@ -294,7 +335,7 @@ function render() {
       <main class="main-content">
         <header class="topbar"><div class="crumb">${active === 'overview' ? 'Overview' : active === 'privacy' ? 'Privacy Policy' : active === 'terms' ? 'Terms of Service' : active === 'not-found' ? 'Error' : active[0].toUpperCase() + active.slice(1)}</div><div class="top-actions"><button class="icon-button" aria-label="Toggle theme" data-theme-toggle>${state.theme === 'dark' ? '☀' : '☾'}</button><button class="icon-button" aria-label="Notifications" data-action="notifications">♧<i></i></button><div class="profile-menu"><button class="profile-menu-trigger" data-action="toggle-profile" aria-label="Open account menu"><span class="avatar avatar-small">${userInitials(state.userName)}</span><span class="profile-menu-name">${escapeHtml(state.userName)}</span><span class="profile-chevron">⌄</span></button>${state.profileMenuOpen ? '<div class="profile-dropdown"><button data-action="open-settings">⚙ &nbsp; Settings</button><button data-action="view-privacy">▣ &nbsp; Privacy</button><button class="dropdown-logout" data-action="logout">↪ &nbsp; Log out</button></div>' : ''}</div></div></header>
         ${pageContent}
-        ${active === 'campaigns' ? `<button class="copilot-fab" data-action="toggle-copilot"><span class="copilot-fab-spark">✧</span><span>${state.copilotOpen ? 'Hide Copilot' : 'Campaign Copilot'}</span></button>` : ''}
+        ${active === 'campaigns' ? `<button class="copilot-fab" data-action="toggle-copilot"><span class="copilot-fab-spark">✧</span><span>${state.copilotOpen ? 'Hide Copilot' : 'Campaign AI Copilot'}</span></button>` : ''}
         ${active === 'campaigns' ? assistantView() : ''}
         ${active === 'campaigns' ? '<input class="file-input" type="file" accept=".csv,text/csv" />' : ''}
       </main>
@@ -325,7 +366,7 @@ function overviewView() {
       <p style="color: var(--text-muted, #888); margin-bottom: 12px; font-size: 0.95rem;">No campaigns created yet in your workspace.</p>
       <button class="primary-button small" data-action="new-campaign">＋ Create your first campaign</button>
     </div>`}
-    <div class="bottom-grid"><div class="insight-panel"><div class="panel-heading"><div><h2>Outreach insight</h2><p class="section-note">AI outreach tips</p></div><span class="insight-icon">✧</span></div><p class="insight-copy">Messages mentioning a <strong>specific project detail</strong> or personalized need receive <strong>2.4× more replies.</strong> Use Gemini AI to tailor each message.</p><button class="outline-button" data-action="new-campaign">Build a campaign <span>→</span></button></div><div class="activity-panel"><div class="panel-heading"><div><h2>Recent activity</h2><p class="section-note">Live audit events</p></div><button class="text-button" data-view="activity">See all</button></div>${state.activityList.length > 0 ? state.activityList.slice(0, 4).map(item => `
+    <div class="bottom-grid"><div class="insight-panel"><div class="panel-heading"><div><h2>Outreach insight</h2><p class="section-note">Nexyro IT conversion strategy</p></div><span class="insight-icon">✧</span></div><p class="insight-copy">Emails addressing <strong>specific website audit bottlenecks & scalability</strong> get <strong>3.2× more replies</strong> than generic pitches. Use Gemini AI to tailor each pitch.</p><button class="outline-button" data-action="new-campaign">Build a campaign <span>→</span></button></div><div class="activity-panel"><div class="panel-heading"><div><h2>Recent activity</h2><p class="section-note">Live audit events</p></div><button class="text-button" data-view="activity">See all</button></div>${state.activityList.length > 0 ? state.activityList.slice(0, 4).map(item => `
     <div class="activity-item"><span class="activity-dot ${item.action.includes('FAIL') ? 'red' : item.action.includes('ACCOUNT') ? 'blue' : 'green'}"></span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)}</p></div><time>${formatTimeAgo(item.createdAt)}</time></div>`).join('') : '<p style="color: var(--text-muted, #888); padding: 16px 0;">No recent audit activity.</p>'}</div></div></section>`;
 }
 
@@ -333,14 +374,14 @@ function campaignView(view) {
   const drafts = filteredDrafts();
   const isContacts = view === 'contacts';
   const isActivity = view === 'activity';
-  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} people ready for thoughtful outreach.</p></div><button class="primary-button" data-action="upload">＋ Import contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} contacts</span></div><div class="contact-grid">${state.rows.map((r,i) => {
+  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">PROSPECT DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} verified company prospects loaded for outreach.</p></div><button class="primary-button" data-action="upload">＋ Import CSV contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts by company or name" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} prospects</span></div><div class="contact-grid">${state.rows.map((r,i) => {
     const contactName = getContactName(r);
-    return `<div class="contact-card"><div class="contact-avatar">${userInitials(contactName)}</div><div><strong>${escapeHtml(contactName)}</strong><p>${escapeHtml(r.University || r.Company || 'Prospect')}</p><small>${escapeHtml(r.email || '')}</small></div><span class="contact-status">Ready</span></div>`;
+    return `<div class="contact-card"><div class="contact-avatar">${userInitials(contactName)}</div><div><strong>${escapeHtml(contactName)}</strong><p>${escapeHtml(r.Company || r.University || 'Company')}</p><small>${escapeHtml(r.email || '')}</small></div><span class="contact-status">Ready</span></div>`;
   }).join('')}</div></section>`;
   if (isActivity) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>Activity</h1><p class="subheading">A clear record of every campaign action.</p></div></div><div class="activity-log">${state.activityList.length > 0 ? state.activityList.map((item, i) => `<div class="log-row"><span class="log-icon">${item.action.includes('FAIL') ? '!' : '✓'}</span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)} · ${formatTimeAgo(item.createdAt)}</p></div><span class="log-kind">${item.action.includes('FAIL') ? 'ATTENTION' : 'SYSTEM'}</span></div>`).join('') : '<div style="padding: 32px; text-align: center; color: var(--text-muted, #888);">No activity recorded yet.</div>'}</div></section>`;
   
-  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Turn a spreadsheet into personalized conversations with Gemini AI.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & voice</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose your outreach intent</h2><p>Signalcraft adapts the message structure to your target goal.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Messages will be sent through your authorized account.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} contacts loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Generate with Gemini AI</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => {
-    const displayName = d.name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0] || `Contact ${i+1}`;
+  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Convert prospects with targeted website audits & business scaling proposals.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & proposal</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose outreach focus</h2><p>Signalcraft crafts personalized pitches addressing specific pain points.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Outbound emails will be dispatched safely.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} prospects loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Generate with Gemini AI</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => {
+    const displayName = d.name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0] || `Prospect ${i+1}`;
     return `<button class="draft-tab ${state.selectedDraft === i ? 'active' : ''}" data-draft="${i}"><span class="tab-initials">${userInitials(d.name)}</span><span class="tab-name">${escapeHtml(displayName)}</span></button>`;
   }).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>✨ AI draft · Editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<p>No matching drafts.</p>'}</aside></div></section>`;
 }

@@ -10,10 +10,49 @@ const encryptionSecret = process.env.APP_ENCRYPTION_KEY;
 if (process.env.NODE_ENV === 'production' && (!encryptionSecret || encryptionSecret === 'replace-with-a-long-random-secret')) throw new Error('APP_ENCRYPTION_KEY must be set in production');
 const encryptionKey = crypto.createHash('sha256').update(encryptionSecret || 'change-this-development-key').digest();
 const intents = {
-  scholarship: 'academic inquiry letters',
-  b2b: 'partnership conversations',
-  web_dev: 'digital transformation pitches'
+  web_dev: 'custom web & software modernization pitch highlighting their specific website/app issues and showing how Nexyro IT resolves bottlenecks to upscale their business',
+  b2b: 'B2B growth partnership proposal identifying business operational bottlenecks and showing how Nexyro IT custom engineering upscales their business revenue',
+  scholarship: 'academic inquiry letters'
 };
+
+const nexyroSignature = `\n\nBest regards,\nMuhammad Saad Iqbal\nNexyro IT Team\nhttps://nexyro-it-website.vercel.app/`;
+
+function formatDraftBody(body) {
+  let text = String(body || '').trim();
+  if (!text.includes('nexyro-it-website.vercel.app')) {
+    text = text.replace(/(\n*(Best regards|Warmly|Sincerely|Regards|Thanks)[^\n]*(\n.*)*)?$/i, '');
+    text = `${text.trim()}${nexyroSignature}`;
+  }
+  return text.slice(0, 8000);
+}
+
+async function generateGeminiDrafts(rows, intent, senderName) {
+  const generated = [];
+  for (let offset = 0; offset < rows.length; offset += 10) {
+    const batch = rows.slice(offset, offset + 10).map(row => Object.fromEntries(geminiFields[intent].filter(field => row[field] != null && String(row[field]).trim()).map(field => [field, String(row[field]).slice(0, 1000)])));
+    const result = await geminiJson(JSON.stringify({
+      task: `Write one high-converting ${intents[intent]} email for each contact. Point out their specific website audit issues, tech bottlenecks or business needs, and explain how Nexyro IT can handle these challenges to upscale their business. Sign as Muhammad Saad Iqbal, Nexyro IT Team, including website link https://nexyro-it-website.vercel.app/. Keep each message around 70-130 words. Preserve the array order and return exactly ${batch.length} drafts.`,
+      contacts: batch
+    }), {
+      type: 'OBJECT', properties: { drafts: { type: 'ARRAY', items: draftSchema } }, required: ['drafts']
+    });
+    if (!Array.isArray(result.drafts) || result.drafts.length !== batch.length) throw httpError(502, 'Gemini returned the wrong number of drafts. Please retry.');
+    generated.push(...result.drafts);
+  }
+  return generated.map((draft, index) => {
+    const subject = String(draft.subject || '').trim().replace(/[\r\n]+/g, ' ').slice(0, 180);
+    const message = formatDraftBody(draft.body);
+    if (!subject || !message) throw httpError(502, 'Gemini returned an incomplete draft. Please retry.');
+    return { to: recipientAddress(rows[index]), name: contactName(rows[index]), subject, body: message };
+  });
+}
+async function reviseGeminiDraft(draft, instruction) {
+  const result = await geminiJson(JSON.stringify({ task: 'Revise this email according to the instruction. Preserve the website issue analysis, upscale business proposition, and keep signature intact (Muhammad Saad Iqbal, Nexyro IT Team, https://nexyro-it-website.vercel.app/).', instruction, subject: draft.subject, body: draft.body }), draftSchema);
+  const subject = String(result.subject || '').trim().replace(/[\r\n]+/g, ' ').slice(0, 180);
+  const message = formatDraftBody(result.body);
+  if (!subject || !message) throw httpError(502, 'Gemini returned an incomplete revision. Please retry.');
+  return { subject, body: message };
+}
 
 function id(prefix) { return `${prefix}_${crypto.randomBytes(12).toString('hex')}`; }
 function json(res, status, body, request = {}) {
@@ -90,30 +129,6 @@ async function geminiJson(prompt, schema) {
     }
   }
   throw httpError(502, `Gemini generation failed: ${lastError ? lastError.message : 'Please retry'}`);
-}
-async function generateGeminiDrafts(rows, intent, senderName) {
-  const generated = [];
-  for (let offset = 0; offset < rows.length; offset += 10) {
-    const batch = rows.slice(offset, offset + 10).map(row => Object.fromEntries(geminiFields[intent].filter(field => row[field] != null && String(row[field]).trim()).map(field => [field, String(row[field]).slice(0, 1000)])));
-    const result = await geminiJson(JSON.stringify({ task: `Write one ${intents[intent]} email for each contact. Keep each message around 60-120 words. Sign as ${senderName || 'the sender'}. Preserve the array order and return exactly ${batch.length} drafts.`, contacts: batch }), {
-      type: 'OBJECT', properties: { drafts: { type: 'ARRAY', items: draftSchema } }, required: ['drafts']
-    });
-    if (!Array.isArray(result.drafts) || result.drafts.length !== batch.length) throw httpError(502, 'Gemini returned the wrong number of drafts. Please retry.');
-    generated.push(...result.drafts);
-  }
-  return generated.map((draft, index) => {
-    const subject = String(draft.subject || '').trim().replace(/[\r\n]+/g, ' ').slice(0, 180);
-    const message = String(draft.body || '').trim().slice(0, 8000);
-    if (!subject || !message) throw httpError(502, 'Gemini returned an incomplete draft. Please retry.');
-    return { to: recipientAddress(rows[index]), name: contactName(rows[index]), subject, body: message };
-  });
-}
-async function reviseGeminiDraft(draft, instruction) {
-  const result = await geminiJson(JSON.stringify({ task: 'Revise this email according to the instruction. Preserve truthful facts and keep its intent.', instruction, subject: draft.subject, body: draft.body }), draftSchema);
-  const subject = String(result.subject || '').trim().replace(/[\r\n]+/g, ' ').slice(0, 180);
-  const message = String(result.body || '').trim().slice(0, 8000);
-  if (!subject || !message) throw httpError(502, 'Gemini returned an incomplete revision. Please retry.');
-  return { subject, body: message };
 }
 async function exchangeGoogleCode(code) {
   const response = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID, client_secret: process.env.GOOGLE_CLIENT_SECRET, redirect_uri: process.env.GOOGLE_REDIRECT_URI, grant_type: 'authorization_code' }) });
