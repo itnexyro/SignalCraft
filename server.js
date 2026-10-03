@@ -56,7 +56,7 @@ function recipientAddress(row) { return String(row.email || row.Email || row.con
 function contactName(row) { return row.Professor || row.ContactName || row.ClientName || row.ApplicantName || 'there'; }
 async function geminiJson(prompt, schema) {
   if (!process.env.GEMINI_API_KEY) throw httpError(503, 'GEMINI_API_KEY is not configured');
-  const model = encodeURIComponent(process.env.GEMINI_MODEL || 'gemini-2.5-flash');
+  const model = encodeURIComponent(process.env.GEMINI_MODEL || 'gemini-3.8-flash');
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
