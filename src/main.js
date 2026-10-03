@@ -19,6 +19,21 @@ function nameFromEmail(email = '') {
   return localPart ? localPart.split(' ').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : 'Saad';
 }
 
+function getContactName(row) {
+  if (!row) return 'Partner';
+  return (
+    row.Professor ||
+    row.ContactName ||
+    row.ClientName ||
+    row.ApplicantName ||
+    row.Name ||
+    row.name ||
+    row.FullName ||
+    row.RecipientName ||
+    (row.email ? row.email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Contact')
+  );
+}
+
 const savedUserName = localStorage.getItem('signalcraft-user');
 const savedAuthEmail = localStorage.getItem('signalcraft-auth-email') || '';
 const API_BASE = resolveApiBase(import.meta.env.VITE_API_URL);
@@ -120,6 +135,7 @@ const state = {
   gmailConnected: localStorage.getItem('signalcraft-gmail-connected') === 'true',
   geminiConfigured: false,
   profileMenuOpen: false,
+  copilotOpen: false,
   theme: localStorage.getItem('signalcraft-theme') || 'dark',
   assistantMessages: [{ role: 'assistant', text: 'I can edit this campaign for you. Try “make it shorter”, “make it more formal”, or “switch to B2B”.' }],
   toast: ''
@@ -131,23 +147,25 @@ function applyTheme() {
 }
 
 function makeDraft(row, intent) {
-  const first = row.ApplicantName || row.ClientName || row.ContactName || 'there';
-  const person = row.Professor || row.ContactName || 'there';
+  const person = getContactName(row);
+  const sender = state.userName || 'The Team';
   if (intent === 'scholarship') return {
     to: row.email || 'recipient@example.com',
     name: person,
-    subject: `A question about ${row.FieldOfStudy || 'your research'} at ${row.University || 'your university'}`,
-    body: `Hi ${person},\n\nI recently came across your work in ${row.FieldOfStudy || 'this field'} and was especially interested in ${row.PastResearch || 'your recent research'}.\n\nI am exploring next steps in this area and would value your perspective on the questions your lab is prioritising this year. Would you be open to a brief conversation?\n\nWarmly,\n${first}`
+    subject: `A question about ${row.FieldOfStudy || 'your research'} at ${row.University || 'your institution'}`,
+    body: `Hi ${person},\n\nI recently came across your work in ${row.FieldOfStudy || 'your field'} and was especially interested in ${row.PastResearch || 'your research'}.\n\nI am exploring next steps in this area and would value your perspective on the questions your group is prioritising this year. Would you be open to a brief conversation?\n\nWarmly,\n${sender}`
   };
   if (intent === 'b2b') return {
-    to: row.email || 'partner@example.com', name: row.ContactName || 'there',
+    to: row.email || 'partner@example.com',
+    name: person,
     subject: `A practical idea for ${row.Company || 'your team'}`,
-    body: `Hi ${row.ContactName || 'there'},\n\nI noticed ${row.Company || 'your team'} is working in ${row.Industry || 'a fast-moving market'}. We help teams turn ${row.BusinessNeed || 'complex operational priorities'} into focused, measurable growth.\n\nI have one idea that could be useful for your roadmap. Is a 15-minute conversation next week worth exploring?\n\nBest,\nNorthstar Studio`
+    body: `Hi ${person},\n\nI noticed ${row.Company || 'your team'} is working in ${row.Industry || 'a fast-moving market'}. We help teams turn ${row.BusinessNeed || 'complex operational priorities'} into focused, measurable growth.\n\nI have one idea that could be useful for your roadmap. Is a 15-minute conversation next week worth exploring?\n\nBest regards,\n${sender}`
   };
   return {
-    to: row.email || 'client@example.com', name: row.ClientName || 'there',
+    to: row.email || 'client@example.com',
+    name: person,
     subject: `One opportunity I spotted on ${row.Company || 'your digital experience'}`,
-    body: `Hi ${row.ClientName || 'there'},\n\nI spent a few minutes looking at ${row.Company || 'your product'} and noticed ${row.WebsiteAuditNote || 'a small opportunity to make the customer journey clearer'}.\n\nOur team helps ambitious companies modernise the parts of their digital experience that quietly hold growth back. Your ${row.TechStack || 'current stack'} looks like a strong foundation.\n\nWould a short working session be useful?\n\nBest,\nNorthstar Studio`
+    body: `Hi ${person},\n\nI spent a few minutes looking at ${row.Company || 'your product'} and noticed ${row.WebsiteAuditNote || 'an opportunity to make the customer journey clearer'}.\n\nOur team helps ambitious companies modernise the parts of their digital experience that quietly hold growth back. Your ${row.TechStack || 'current stack'} looks like a strong foundation.\n\nWould a short working session be useful?\n\nBest regards,\n${sender}`
   };
 }
 
@@ -156,7 +174,15 @@ function generateDrafts() { state.drafts = state.rows.map(row => makeDraft(row, 
 generateDrafts();
 
 function escapeHtml(value = '') { return value.replace(/[&<>'"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[c])); }
-function userInitials(name = '') { return name.split(/\s+/).filter(Boolean).map(part => part[0]).join('').slice(0, 2).toUpperCase() || 'U'; }
+
+function userInitials(name = '') {
+  if (!name || name.toLowerCase() === 'there' || name.toLowerCase() === 'contact') return 'CT';
+  const clean = name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').trim();
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return (parts[0] ? parts[0].slice(0, 2) : 'CT').toUpperCase();
+}
+
 function showToast(message) { state.toast = message; render(); setTimeout(() => { state.toast = ''; render(); }, 2800); }
 function filteredDrafts() { return state.drafts.filter(d => `${d.name} ${d.to} ${d.subject}`.toLowerCase().includes(state.search.toLowerCase())); }
 function parseCsv(text) {
@@ -226,7 +252,8 @@ function authView() {
 }
 
 function assistantView() {
-  return `<aside class="assistant-card"><div class="assistant-heading"><div><span class="eyebrow">CAMPAIGN COPILOT</span><h2>Ask me to edit</h2></div><span class="assistant-spark">✧</span></div><div class="assistant-messages">${state.assistantMessages.map(message => `<div class="assistant-message ${message.role}">${escapeHtml(message.text)}</div>`).join('')}</div><div class="assistant-suggestions"><button data-assistant="Make it shorter">Shorter</button><button data-assistant="Make it more formal">Formal</button><button data-assistant="Rewrite the subject">New subject</button></div><form class="assistant-form" data-assistant-form><input name="command" placeholder="Tell me what to change..." autocomplete="off" /><button aria-label="Send instruction">↑</button></form><p class="assistant-note">Edits apply to the selected draft.</p></aside>`;
+  if (!state.copilotOpen) return '';
+  return `<aside class="assistant-card"><div class="assistant-heading"><div><span class="eyebrow">CAMPAIGN COPILOT</span><h2>Ask AI to edit</h2></div><button class="assistant-close-btn" data-action="toggle-copilot" title="Close Copilot">✕</button></div><div class="assistant-messages">${state.assistantMessages.map(message => `<div class="assistant-message ${message.role}">${escapeHtml(message.text)}</div>`).join('')}</div><div class="assistant-suggestions"><button data-assistant="Make it shorter">Shorter</button><button data-assistant="Make it more formal">Formal</button><button data-assistant="Rewrite the subject">New subject</button></div><form class="assistant-form" data-assistant-form><input name="command" placeholder="Tell AI what to change..." autocomplete="off" /><button aria-label="Send instruction">↑</button></form><p class="assistant-note">Edits apply to the selected draft.</p></aside>`;
 }
 
 function settingsView() {
@@ -267,6 +294,7 @@ function render() {
       <main class="main-content">
         <header class="topbar"><div class="crumb">${active === 'overview' ? 'Overview' : active === 'privacy' ? 'Privacy Policy' : active === 'terms' ? 'Terms of Service' : active === 'not-found' ? 'Error' : active[0].toUpperCase() + active.slice(1)}</div><div class="top-actions"><button class="icon-button" aria-label="Toggle theme" data-theme-toggle>${state.theme === 'dark' ? '☀' : '☾'}</button><button class="icon-button" aria-label="Notifications" data-action="notifications">♧<i></i></button><div class="profile-menu"><button class="profile-menu-trigger" data-action="toggle-profile" aria-label="Open account menu"><span class="avatar avatar-small">${userInitials(state.userName)}</span><span class="profile-menu-name">${escapeHtml(state.userName)}</span><span class="profile-chevron">⌄</span></button>${state.profileMenuOpen ? '<div class="profile-dropdown"><button data-action="open-settings">⚙ &nbsp; Settings</button><button data-action="view-privacy">▣ &nbsp; Privacy</button><button class="dropdown-logout" data-action="logout">↪ &nbsp; Log out</button></div>' : ''}</div></div></header>
         ${pageContent}
+        ${active === 'campaigns' ? `<button class="copilot-fab" data-action="toggle-copilot"><span class="copilot-fab-spark">✧</span><span>${state.copilotOpen ? 'Hide Copilot' : 'Campaign Copilot'}</span></button>` : ''}
         ${active === 'campaigns' ? assistantView() : ''}
         ${active === 'campaigns' ? '<input class="file-input" type="file" accept=".csv,text/csv" />' : ''}
       </main>
@@ -305,9 +333,16 @@ function campaignView(view) {
   const drafts = filteredDrafts();
   const isContacts = view === 'contacts';
   const isActivity = view === 'activity';
-  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} people ready for thoughtful outreach.</p></div><button class="primary-button" data-action="upload">＋ Import contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} contacts</span></div><div class="contact-grid">${state.rows.map((r,i) => `<div class="contact-card"><div class="contact-avatar">${(r.ApplicantName || r.ClientName || r.ContactName || 'C').split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong>${r.Professor || r.ContactName || r.ClientName}</strong><p>${r.University || r.Company || 'Prospect'}</p><small>${r.email}</small></div><span class="contact-status">Ready</span></div>`).join('')}</div></section>`;
+  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} people ready for thoughtful outreach.</p></div><button class="primary-button" data-action="upload">＋ Import contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} contacts</span></div><div class="contact-grid">${state.rows.map((r,i) => {
+    const contactName = getContactName(r);
+    return `<div class="contact-card"><div class="contact-avatar">${userInitials(contactName)}</div><div><strong>${escapeHtml(contactName)}</strong><p>${escapeHtml(r.University || r.Company || 'Prospect')}</p><small>${escapeHtml(r.email || '')}</small></div><span class="contact-status">Ready</span></div>`;
+  }).join('')}</div></section>`;
   if (isActivity) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>Activity</h1><p class="subheading">A clear record of every campaign action.</p></div></div><div class="activity-log">${state.activityList.length > 0 ? state.activityList.map((item, i) => `<div class="log-row"><span class="log-icon">${item.action.includes('FAIL') ? '!' : '✓'}</span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)} · ${formatTimeAgo(item.createdAt)}</p></div><span class="log-kind">${item.action.includes('FAIL') ? 'ATTENTION' : 'SYSTEM'}</span></div>`).join('') : '<div style="padding: 32px; text-align: center; color: var(--text-muted, #888);">No activity recorded yet.</div>'}</div></section>`;
-  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Turn a spreadsheet into conversations that feel human.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & voice</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose your outreach intent</h2><p>Signalcraft adapts the message structure to your goal.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Messages will be sent through your authorized account.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} sample rows loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Regenerate drafts</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => `<button class="draft-tab ${state.selectedDraft === i ? 'active' : ''}" data-draft="${i}"><span>${d.name.slice(0,2).toUpperCase()}</span>${d.name.split(' ')[0]}</button>`).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>AI draft · editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<p>No matching drafts.</p>'}</aside></div></section>`;
+  
+  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Turn a spreadsheet into personalized conversations with Gemini AI.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & voice</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose your outreach intent</h2><p>Signalcraft adapts the message structure to your target goal.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Messages will be sent through your authorized account.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} contacts loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Generate with Gemini AI</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => {
+    const displayName = d.name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0] || `Contact ${i+1}`;
+    return `<button class="draft-tab ${state.selectedDraft === i ? 'active' : ''}" data-draft="${i}"><span class="tab-initials">${userInitials(d.name)}</span><span class="tab-name">${escapeHtml(displayName)}</span></button>`;
+  }).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>✨ AI draft · Editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<p>No matching drafts.</p>'}</aside></div></section>`;
 }
 
 function bindEvents() {
@@ -319,6 +354,10 @@ function bindEvents() {
     if (!command) return;
     applyAssistantCommand(command);
   });
+  document.querySelectorAll('[data-action="toggle-copilot"]').forEach(el => el.addEventListener('click', () => {
+    state.copilotOpen = !state.copilotOpen;
+    render();
+  }));
   document.querySelectorAll('[data-auth-mode]').forEach(el => el.addEventListener('click', () => { state.authMode = el.dataset.authMode; render(); }));
   document.querySelector('[data-auth-form]')?.addEventListener('submit', async event => {
     event.preventDefault();
@@ -379,7 +418,7 @@ function bindEvents() {
     }
     state.gmailConnected = !state.gmailConnected;
     localStorage.setItem('signalcraft-gmail-connected', String(state.gmailConnected));
-    showToast(state.gmailConnected ? 'Gmail connected for this demo session' : 'Gmail disconnected');
+    showToast(state.gmailConnected ? 'Gmail connected for this session' : 'Gmail disconnected');
   }));
   document.querySelector('[data-action="save-settings"]')?.addEventListener('click', () => {
     state.userName = document.querySelector('[data-setting-name]')?.value || state.userName;
@@ -438,8 +477,8 @@ function bindEvents() {
   document.querySelector('[data-search]')?.addEventListener('input', e => { state.search = e.target.value; render(); const input = document.querySelector('[data-search]'); input?.focus(); input?.setSelectionRange(state.search.length, state.search.length); });
   document.querySelector('[data-campaign-name]')?.addEventListener('change', e => state.campaignName = e.target.value);
   document.querySelector('[data-email]')?.addEventListener('change', e => { state.email = e.target.value; localStorage.setItem('signalcraft-email', state.email); });
-  document.querySelector('[data-subject]')?.addEventListener('input', e => state.drafts[state.selectedDraft].subject = e.target.value);
-  document.querySelector('[data-body]')?.addEventListener('input', e => state.drafts[state.selectedDraft].body = e.target.value);
+  document.querySelector('[data-subject]')?.addEventListener('input', e => { if (state.drafts[state.selectedDraft]) state.drafts[state.selectedDraft].subject = e.target.value; });
+  document.querySelector('[data-body]')?.addEventListener('input', e => { if (state.drafts[state.selectedDraft]) state.drafts[state.selectedDraft].body = e.target.value; });
 }
 
 render();
