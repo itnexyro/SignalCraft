@@ -7,48 +7,7 @@ const intents = {
   scholarship: { label: 'Scholarship outreach', icon: '✦', description: 'Academic inquiry letters', fields: ['ApplicantName', 'University', 'Professor', 'FieldOfStudy', 'PastResearch'] }
 };
 
-const sampleRows = [
-  {
-    ClientName: 'Sarah Jenkins',
-    Company: 'Apex Logistics Global',
-    Role: 'Chief Technology Officer',
-    WebsiteAuditNote: 'Slow portal load times (4.2s), non-responsive customer tracking dashboard, and checkout drop-offs',
-    TechStack: 'Legacy PHP & Monolithic WordPress',
-    BusinessNeed: 'Modernize client portal to real-time React/Next.js dashboard and automate shipment notifications',
-    BusinessGoal: 'Upscale monthly platform bookings by 35% and cut support tickets',
-    email: 'sarah.jenkins@apexlogistics.io'
-  },
-  {
-    ClientName: 'David Miller',
-    Company: 'FinEdge Capital',
-    Role: 'Head of Growth & Operations',
-    WebsiteAuditNote: 'Outdated landing page UI, lack of automated client onboarding flow, and mobile conversion friction',
-    TechStack: 'Static Webflow + manual spreadsheets',
-    BusinessNeed: 'Build automated SaaS web application with secure client authentication and automated payment gateway',
-    BusinessGoal: 'Scale inbound investor conversion by 3x and automate underwriting workflows',
-    email: 'david.m@finedgecap.com'
-  },
-  {
-    ClientName: 'Elena Rostova',
-    Company: 'OmniHealth Solutions',
-    Role: 'Founder & CEO',
-    WebsiteAuditNote: 'Fragmented patient booking flow, security certificate alerts, and zero mobile app sync',
-    TechStack: 'Custom legacy code with recurring database bottlenecks',
-    BusinessNeed: 'Re-engineer cloud web application with scalable serverless architecture and HIPAA-compliant scheduling',
-    BusinessGoal: 'Upscale business operations to 100k active monthly users with 99.9% uptime',
-    email: 'elena@omnihealth.co'
-  },
-  {
-    ClientName: 'Marcus Vance',
-    Company: 'UrbanSpace Real Estate',
-    Role: 'Managing Director',
-    WebsiteAuditNote: 'No interactive property maps, high bounce rate on mobile listings, and slow search filters',
-    TechStack: 'Legacy custom CMS',
-    BusinessNeed: 'Deploy ultra-fast modern web portal with interactive 3D virtual tours and AI property match',
-    BusinessGoal: 'Double lead generation and upscale agency transaction volume',
-    email: 'marcus@urbanspacerealty.com'
-  }
-];
+const sampleRows = [];
 
 function nameFromEmail(email = '') {
   const localPart = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
@@ -374,16 +333,16 @@ function campaignView(view) {
   const drafts = filteredDrafts();
   const isContacts = view === 'contacts';
   const isActivity = view === 'activity';
-  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">PROSPECT DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} verified company prospects loaded for outreach.</p></div><button class="primary-button" data-action="upload">＋ Import CSV contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts by company or name" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} prospects</span></div><div class="contact-grid">${state.rows.map((r,i) => {
+  if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">PROSPECT DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} verified company prospects loaded for outreach.</p></div><button class="primary-button" data-action="upload">＋ Import CSV contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts by company or name" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} prospects</span></div><div class="contact-grid">${state.rows.length > 0 ? state.rows.map((r,i) => {
     const contactName = getContactName(r);
     return `<div class="contact-card"><div class="contact-avatar">${userInitials(contactName)}</div><div><strong>${escapeHtml(contactName)}</strong><p>${escapeHtml(r.Company || r.University || 'Company')}</p><small>${escapeHtml(r.email || '')}</small></div><span class="contact-status">Ready</span></div>`;
-  }).join('')}</div></section>`;
+  }).join('') : `<div style="grid-column: 1 / -1; padding: 48px 24px; text-align: center; border: 1px dashed rgba(255,255,255,0.12); border-radius: 16px;"><p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">No contacts loaded yet. Import a CSV file to add your prospects.</p><button class="primary-button" data-action="upload">＋ Import CSV contacts</button></div>`}</div></section>`;
   if (isActivity) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>Activity</h1><p class="subheading">A clear record of every campaign action.</p></div></div><div class="activity-log">${state.activityList.length > 0 ? state.activityList.map((item, i) => `<div class="log-row"><span class="log-icon">${item.action.includes('FAIL') ? '!' : '✓'}</span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)} · ${formatTimeAgo(item.createdAt)}</p></div><span class="log-kind">${item.action.includes('FAIL') ? 'ATTENTION' : 'SYSTEM'}</span></div>`).join('') : '<div style="padding: 32px; text-align: center; color: var(--text-muted, #888);">No activity recorded yet.</div>'}</div></section>`;
   
   return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Convert prospects with targeted website audits & business scaling proposals.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & proposal</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose outreach focus</h2><p>Signalcraft crafts personalized pitches addressing specific pain points.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Outbound emails will be dispatched safely.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} prospects loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Generate with Gemini AI</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => {
     const displayName = d.name.replace(/^(Dr\.|Prof\.|Mr\.|Mrs\.|Ms\.)\s*/i, '').split(' ')[0] || `Prospect ${i+1}`;
     return `<button class="draft-tab ${state.selectedDraft === i ? 'active' : ''}" data-draft="${i}"><span class="tab-initials">${userInitials(d.name)}</span><span class="tab-name">${escapeHtml(displayName)}</span></button>`;
-  }).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>✨ AI draft · Editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<p>No matching drafts.</p>'}</aside></div></section>`;
+  }).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>✨ AI draft · Editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<div style="padding: 40px 16px; text-align: center; color: var(--text-muted);"><p style="font-size: 0.95rem; margin-bottom: 16px;">No drafts available.</p><p style="font-size: 0.85rem; margin-bottom: 20px;">Upload a CSV or Excel file to load your recipient prospects and generate personalized emails.</p><button class="outline-button small" data-action="upload">＋ Import CSV File</button></div>'}</aside></div></section>`;
 }
 
 function bindEvents() {
