@@ -56,23 +56,40 @@ function recipientAddress(row) { return String(row.email || row.Email || row.con
 function contactName(row) { return row.Professor || row.ContactName || row.ClientName || row.ApplicantName || 'there'; }
 async function geminiJson(prompt, schema) {
   if (!process.env.GEMINI_API_KEY) throw httpError(503, 'GEMINI_API_KEY is not configured');
-  const model = encodeURIComponent(process.env.GEMINI_MODEL || 'gemini-3.8-flash');
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: 'Write concise, truthful, individualized plain-text outreach. Use only facts in the supplied data; never invent research, results, product capabilities, relationships, or prior contact. Do not include the recipient email address. Return only the requested JSON.' }] },
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.6, maxOutputTokens: 4096, responseMimeType: 'application/json', responseSchema: schema }
-    }),
-    signal: AbortSignal.timeout(45000)
-  });
-  if (!response.ok) throw httpError(502, 'Gemini could not generate the draft. Check the API key, model, and billing, then retry.');
-  const payload = await response.json();
-  const text = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('');
-  if (!text) throw httpError(502, 'Gemini returned an empty response. Please retry.');
-  try { return JSON.parse(text); }
-  catch { throw httpError(502, 'Gemini returned an invalid draft response. Please retry.'); }
+  const preferredModel = process.env.GEMINI_MODEL || 'gemini-flash-lite-latest';
+  const modelCandidates = [preferredModel, 'gemini-3.5-flash', 'gemini-flash-lite-latest', 'gemini-3.8-flash'].filter((v, i, a) => a.indexOf(v) === i);
+
+  let lastError;
+  for (const modelName of modelCandidates) {
+    try {
+      const model = encodeURIComponent(modelName);
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: 'Write concise, truthful, individualized plain-text outreach. Use only facts in the supplied data; never invent research, results, product capabilities, relationships, or prior contact. Do not include the recipient email address. Return only the requested JSON.' }] },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.6, maxOutputTokens: 4096, responseMimeType: 'application/json', responseSchema: schema }
+        }),
+        signal: AbortSignal.timeout(45000)
+      });
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        lastError = new Error(`Gemini ${modelName} (${response.status}): ${errorText.slice(0, 120)}`);
+        continue;
+      }
+      const payload = await response.json();
+      const text = payload.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('');
+      if (!text) {
+        lastError = new Error(`Gemini ${modelName} returned empty text`);
+        continue;
+      }
+      return JSON.parse(text);
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  throw httpError(502, `Gemini generation failed: ${lastError ? lastError.message : 'Please retry'}`);
 }
 async function generateGeminiDrafts(rows, intent, senderName) {
   const generated = [];
