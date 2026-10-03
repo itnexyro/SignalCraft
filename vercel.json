@@ -1,9 +1,10 @@
 {
   "version": 2,
-  "buildCommand": "npm run vercel-build",
+  "buildCommand": "echo 'Using committed dist'",
+  "installCommand": "echo 'Skipping install'",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index.js" },
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+    { "source": "/api/:path*", "destination": "/api/index.js" },
+    { "source": "/((?!assets|api)[^.]*)", "destination": "/index.html" }
   ]
 }
