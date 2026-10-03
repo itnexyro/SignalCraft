@@ -1,11 +1,12 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const dataDir = path.join(root, 'data');
+const dataDir = process.env.VERCEL ? path.join(os.tmpdir(), 'signalcraft-data') : path.join(root, 'data');
 const storePath = path.join(dataDir, 'store.json');
 const collectionNames = ['users', 'campaigns', 'recipients', 'audit', 'sessions'];
 let cachedFirestore;
@@ -18,19 +19,22 @@ function firestore() {
   if (cachedFirestore) return cachedFirestore;
   const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT;
   if (!rawServiceAccount) {
-    if (process.env.NODE_ENV === 'production') throw new Error('FIREBASE_SERVICE_ACCOUNT must be set in production');
     return null;
   }
 
-  const serviceAccount = JSON.parse(rawServiceAccount);
-  const projectId = process.env.FIREBASE_PROJECT_ID || serviceAccount.project_id;
-  if (!projectId) throw new Error('FIREBASE_PROJECT_ID is missing from the Firebase service account');
-  const app = getApps().find(existing => existing.name === 'signalcraft') || initializeApp({
-    credential: cert(serviceAccount),
-    projectId
-  }, 'signalcraft');
-  cachedFirestore = getFirestore(app);
-  return cachedFirestore;
+  try {
+    const serviceAccount = typeof rawServiceAccount === 'string' ? JSON.parse(rawServiceAccount) : rawServiceAccount;
+    const projectId = process.env.FIREBASE_PROJECT_ID || serviceAccount.project_id || 'email-510117';
+    const app = getApps().find(existing => existing.name === 'signalcraft') || initializeApp({
+      credential: cert(serviceAccount),
+      projectId
+    }, 'signalcraft');
+    cachedFirestore = getFirestore(app);
+    return cachedFirestore;
+  } catch (err) {
+    console.error('Firestore initialization error:', err);
+    return null;
+  }
 }
 
 export async function readStore() {
