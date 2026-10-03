@@ -185,7 +185,7 @@ export async function handleRequest(req, res) {
       const campaign = { id: id('cmp'), userId: user.id, title: input.title || 'Untitled campaign', intentType: input.intentType, promptTemplate: input.promptTemplate || '', createdAt: new Date().toISOString() };
       store.campaigns.push(campaign);
       rows.forEach((row, index) => store.recipients.push({ id: id('rcp'), campaignId: campaign.id, data: row, subject: recipients[index].subject, body: recipients[index].body, status: 'PENDING', errorLog: null, sentAt: null }));
-      audit(store, user.id, 'CAMPAIGN_CREATED', { campaignId: campaign.id });
+      audit(store, user.id, 'CAMPAIGN_CREATED', { campaignId: campaign.id, title: campaign.title });
       await writeStore(store);
       return json(res, 201, { ...campaign, recipients: store.recipients.filter(row => row.campaignId === campaign.id) }, req);
     }

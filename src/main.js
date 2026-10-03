@@ -34,16 +34,60 @@ async function apiRequest(path, options = {}) {
   return data;
 }
 
+function formatAction(action, metadata = {}) {
+  switch (action) {
+    case 'ACCOUNT_CREATED': return 'Account workspace initialized';
+    case 'GMAIL_CONNECTED': return 'Gmail sender account connected';
+    case 'CAMPAIGN_CREATED': return metadata.title ? `Created campaign "${metadata.title}"` : 'New campaign drafted';
+    case 'DISPATCH_STARTED': return `Queued dispatch for ${metadata.count || ''} recipients`;
+    case 'DISPATCH_FINISHED': return 'Email batch dispatch completed';
+    default: return (action || 'System action').replace(/_/g, ' ').toLowerCase().replace(/^\w/, c => c.toUpperCase());
+  }
+}
+
+function formatTimeAgo(isoString) {
+  if (!isoString) return 'recently';
+  const diffMs = Date.now() - new Date(isoString).getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  if (diffSec < 60) return 'just now';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHr = Math.floor(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}h ago`;
+  const diffDays = Math.floor(diffHr / 24);
+  return `${diffDays}d ago`;
+}
+
 async function syncApiSession() {
   if (!state.apiToken || apiSyncStarted) return;
   apiSyncStarted = true;
   try {
-    const [profile, campaigns] = await Promise.all([apiRequest('/me'), apiRequest('/campaigns')]);
-    state.userName = profile.name;
-    state.authEmail = profile.email;
+    const [profile, campaigns, activity] = await Promise.all([
+      apiRequest('/me'),
+      apiRequest('/campaigns').catch(() => []),
+      apiRequest('/activity').catch(() => [])
+    ]);
+    state.userName = profile.name || state.userName;
+    state.authEmail = profile.email || state.authEmail;
     state.gmailConnected = profile.gmailConnected;
     state.geminiConfigured = profile.geminiConfigured;
-    state.campaignCount = campaigns.length;
+    state.campaignList = Array.isArray(campaigns) ? campaigns : [];
+    state.activityList = Array.isArray(activity) ? activity : [];
+    state.campaignCount = state.campaignList.length;
+
+    let totalSent = 0;
+    let totalFailed = 0;
+    state.campaignList.forEach(cmp => {
+      if (Array.isArray(cmp.recipients)) {
+        cmp.recipients.forEach(r => {
+          if (r.status === 'SENT') totalSent++;
+          if (r.status === 'FAILED') totalFailed++;
+        });
+      }
+    });
+    state.sent = totalSent;
+    state.failed = totalFailed;
+
     localStorage.setItem('signalcraft-user', state.userName);
     localStorage.setItem('signalcraft-auth-email', state.authEmail);
     render();
@@ -60,17 +104,19 @@ const state = {
   authEmail: savedAuthEmail,
   activeView: 'overview',
   intent: 'scholarship',
-  campaignName: 'Spring faculty outreach',
+  campaignName: 'New outreach campaign',
+  campaignList: [],
+  activityList: [],
   rows: [...sampleRows],
   drafts: [],
   selectedDraft: 0,
   search: '',
   status: 'Ready to launch',
   sending: false,
-  sent: 128,
-  failed: 3,
-  campaignCount: 6,
-  email: localStorage.getItem('signalcraft-email') || 'outreach@northstar.studio',
+  sent: 0,
+  failed: 0,
+  campaignCount: 0,
+  email: localStorage.getItem('signalcraft-email') || '',
   gmailConnected: localStorage.getItem('signalcraft-gmail-connected') === 'true',
   geminiConfigured: false,
   profileMenuOpen: false,
@@ -214,7 +260,7 @@ function render() {
         <div class="brand"><span class="brand-mark">✳</span><span>signalcraft</span></div>
         <div class="workspace-label">WORKSPACE</div>
         <nav>
-          ${[['overview','Overview','◒'],['campaigns','Campaigns','◎'],['contacts','Contacts','◌'],['activity','Activity','≋'],['settings','Settings','⚙']].map(([id,label,icon]) => `<button class="nav-item ${active === id ? 'active' : ''}" data-view="${id}"><span>${icon}</span>${label}${id === 'campaigns' ? '<small>6</small>' : ''}</button>`).join('')}
+          ${[['overview','Overview','◒'],['campaigns','Campaigns','◎'],['contacts','Contacts','◌'],['activity','Activity','≋'],['settings','Settings','⚙']].map(([id,label,icon]) => `<button class="nav-item ${active === id ? 'active' : ''}" data-view="${id}"><span>${icon}</span>${label}${id === 'campaigns' && state.campaignCount > 0 ? `<small>${state.campaignCount}</small>` : ''}</button>`).join('')}
         </nav>
         <div class="sidebar-bottom"><div class="profile" data-action="open-settings" title="Open profile settings"><div class="avatar">${userInitials(state.userName)}</div><div><strong>${escapeHtml(state.userName)}</strong><small>${escapeHtml(state.authEmail || 'Admin workspace')}</small></div><button class="logout-button" data-action="logout" title="Log out">↪</button></div></div>
       </aside>
@@ -231,11 +277,28 @@ function render() {
 }
 
 function overviewView() {
-  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">THURSDAY, SEPTEMBER 24, 2026</p><h1>Good morning, ${escapeHtml(state.userName.split(' ')[0])} <span class="sun">✦</span></h1><p class="subheading">Your outreach engine is humming. Here’s the pulse.</p></div><button class="primary-button" data-action="new-campaign">＋ New campaign</button></div>
-    <div class="metric-grid"><div class="metric-card accent"><div class="metric-label">SENT THIS MONTH <span>↗</span></div><div class="metric-value">${state.sent.toLocaleString()}</div><div class="metric-foot"><span class="positive">↑ 18.4%</span> vs last month</div><div class="sparkline"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div><div class="metric-card"><div class="metric-label">REPLY RATE <span>↗</span></div><div class="metric-value">24.8%</div><div class="metric-foot"><span class="positive">↑ 4.2%</span> vs last month</div><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="metric-card"><div class="metric-label">ACTIVE CAMPAIGNS</div><div class="metric-value">${state.campaignCount}</div><div class="metric-foot">2 launching this week</div><div class="orbit">◌</div></div><div class="metric-card"><div class="metric-label">FAILED DELIVERIES</div><div class="metric-value warning">${state.failed}</div><div class="metric-foot">Need your attention</div><div class="failure-dot">!</div></div></div>
-    <div class="section-row"><div><h2>Campaign pulse</h2><p class="section-note">Live performance across your active campaigns</p></div><button class="text-button" data-view="campaigns">View all campaigns <span>→</span></button></div>
-    <div class="campaign-table"><div class="table-head"><span>CAMPAIGN</span><span>TYPE</span><span>PROGRESS</span><span>REPLY RATE</span><span>STATUS</span><span></span></div>${[['Faculty outreach · Fall 2026','Scholarship','62','28.4%','Running'],['Q4 product partnerships','B2B proposal','44','21.9%','Running'],['Digital refresh prospects','App & web dev','89','31.2%','Complete'],['Alumni network reactivation','Scholarship','16','—','Draft']].map((r,i) => `<div class="table-row"><div class="campaign-name"><span class="campaign-icon c${i}">${i === 0 ? '✦' : i === 1 ? '◈' : i === 2 ? '⌘' : '○'}</span><strong>${r[0]}</strong></div><span class="type-tag">${r[1]}</span><div class="progress-wrap"><div class="progress"><i style="width:${r[2]}%"></i></div><small>${r[2]}%</small></div><span class="reply">${r[3]}</span><span class="status-pill ${r[4].toLowerCase()}"><i></i>${r[4]}</span><button class="row-more">•••</button></div>`).join('')}</div>
-    <div class="bottom-grid"><div class="insight-panel"><div class="panel-heading"><div><h2>Outreach insight</h2><p class="section-note">Based on your last 30 days</p></div><span class="insight-icon">✧</span></div><p class="insight-copy">Messages mentioning a <strong>specific research detail</strong> receive <strong>2.4× more replies.</strong> Your scholarship campaigns are outperforming your average by 18%.</p><button class="outline-button" data-action="new-campaign">Build a campaign <span>→</span></button></div><div class="activity-panel"><div class="panel-heading"><div><h2>Recent activity</h2><p class="section-note">The last 24 hours</p></div><button class="text-button" data-view="activity">See all</button></div><div class="activity-item"><span class="activity-dot green"></span><div><strong>Campaign completed</strong><p>Digital refresh prospects · 89 contacts</p></div><time>2h ago</time></div><div class="activity-item"><span class="activity-dot blue"></span><div><strong>New replies</strong><p>Q4 product partnerships · 7 replies</p></div><time>5h ago</time></div></div></div></section>`;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const dateStr = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase();
+  const firstName = escapeHtml(state.userName.split(' ')[0] || 'there');
+
+  return `<section class="page"><div class="page-heading"><div><p class="eyebrow">${dateStr}</p><h1>${greeting}, ${firstName} <span class="sun">✦</span></h1><p class="subheading">Your outreach engine is active. Here’s the live pulse.</p></div><button class="primary-button" data-action="new-campaign">＋ New campaign</button></div>
+    <div class="metric-grid"><div class="metric-card accent"><div class="metric-label">SENT THIS MONTH <span>↗</span></div><div class="metric-value">${state.sent.toLocaleString()}</div><div class="metric-foot"><span class="positive">Live</span> backend dispatch count</div><div class="sparkline"><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b><b></b></div></div><div class="metric-card"><div class="metric-label">REPLY RATE <span>↗</span></div><div class="metric-value">${state.sent > 0 ? '—' : '0.0%'}</div><div class="metric-foot">Awaiting replies</div><div class="mini-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div><div class="metric-card"><div class="metric-label">ACTIVE CAMPAIGNS</div><div class="metric-value">${state.campaignCount}</div><div class="metric-foot">${state.campaignCount === 1 ? '1 active campaign' : `${state.campaignCount} active campaigns`}</div><div class="orbit">◌</div></div><div class="metric-card"><div class="metric-label">FAILED DELIVERIES</div><div class="metric-value ${state.failed > 0 ? 'warning' : ''}">${state.failed}</div><div class="metric-foot">${state.failed > 0 ? 'Need your attention' : 'All deliveries clean'}</div><div class="failure-dot">${state.failed > 0 ? '!' : '✓'}</div></div></div>
+    <div class="section-row"><div><h2>Campaign pulse</h2><p class="section-note">Live performance across your active campaigns</p></div><button class="text-button" data-view="campaigns">Create / View campaigns <span>→</span></button></div>
+    ${state.campaignList.length > 0 ? `
+    <div class="campaign-table"><div class="table-head"><span>CAMPAIGN</span><span>TYPE</span><span>PROGRESS</span><span>RECIPIENTS</span><span>STATUS</span><span></span></div>${state.campaignList.map((c, i) => {
+      const rec = Array.isArray(c.recipients) ? c.recipients : [];
+      const sentCount = rec.filter(r => r.status === 'SENT').length;
+      const pct = rec.length ? Math.round((sentCount / rec.length) * 100) : 0;
+      const status = sentCount === rec.length && rec.length > 0 ? 'Complete' : 'Running';
+      return `<div class="table-row"><div class="campaign-name"><span class="campaign-icon c${i % 4}">${i % 4 === 0 ? '✦' : i % 4 === 1 ? '◈' : i % 4 === 2 ? '⌘' : '○'}</span><strong>${escapeHtml(c.title || 'Untitled Campaign')}</strong></div><span class="type-tag">${escapeHtml(intents[c.intentType]?.label || c.intentType)}</span><div class="progress-wrap"><div class="progress"><i style="width:${pct}%"></i></div><small>${pct}%</small></div><span class="reply">${sentCount}/${rec.length}</span><span class="status-pill ${status.toLowerCase()}"><i></i>${status}</span><button class="row-more">•••</button></div>`;
+    }).join('')}</div>` : `
+    <div style="padding: 32px; text-align: center; border: 1px dashed rgba(255,255,255,0.12); border-radius: 12px; margin-bottom: 24px;">
+      <p style="color: var(--text-muted, #888); margin-bottom: 12px; font-size: 0.95rem;">No campaigns created yet in your workspace.</p>
+      <button class="primary-button small" data-action="new-campaign">＋ Create your first campaign</button>
+    </div>`}
+    <div class="bottom-grid"><div class="insight-panel"><div class="panel-heading"><div><h2>Outreach insight</h2><p class="section-note">AI outreach tips</p></div><span class="insight-icon">✧</span></div><p class="insight-copy">Messages mentioning a <strong>specific project detail</strong> or personalized need receive <strong>2.4× more replies.</strong> Use Gemini AI to tailor each message.</p><button class="outline-button" data-action="new-campaign">Build a campaign <span>→</span></button></div><div class="activity-panel"><div class="panel-heading"><div><h2>Recent activity</h2><p class="section-note">Live audit events</p></div><button class="text-button" data-view="activity">See all</button></div>${state.activityList.length > 0 ? state.activityList.slice(0, 4).map(item => `
+    <div class="activity-item"><span class="activity-dot ${item.action.includes('FAIL') ? 'red' : item.action.includes('ACCOUNT') ? 'blue' : 'green'}"></span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)}</p></div><time>${formatTimeAgo(item.createdAt)}</time></div>`).join('') : '<p style="color: var(--text-muted, #888); padding: 16px 0;">No recent audit activity.</p>'}</div></div></section>`;
 }
 
 function campaignView(view) {
@@ -243,7 +306,7 @@ function campaignView(view) {
   const isContacts = view === 'contacts';
   const isActivity = view === 'activity';
   if (isContacts) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">DIRECTORY</p><h1>Contacts</h1><p class="subheading">${state.rows.length} people ready for thoughtful outreach.</p></div><button class="primary-button" data-action="upload">＋ Import contacts</button></div><div class="toolbar"><div class="search"><span>⌕</span><input data-search placeholder="Search contacts" value="${state.search}" /></div><span class="toolbar-count">${state.rows.length} contacts</span></div><div class="contact-grid">${state.rows.map((r,i) => `<div class="contact-card"><div class="contact-avatar">${(r.ApplicantName || r.ClientName || r.ContactName || 'C').split(' ').map(x=>x[0]).join('').slice(0,2)}</div><div><strong>${r.Professor || r.ContactName || r.ClientName}</strong><p>${r.University || r.Company || 'Prospect'}</p><small>${r.email}</small></div><span class="contact-status">Ready</span></div>`).join('')}</div></section>`;
-  if (isActivity) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>Activity</h1><p class="subheading">A clear record of every campaign action.</p></div></div><div class="activity-log">${['Drafts generated for Spring faculty outreach','Gmail connection verified','3 failed deliveries queued for retry','Digital refresh prospects marked complete','Campaign export downloaded'].map((x,i) => `<div class="log-row"><span class="log-icon">${i === 2 ? '!' : '✓'}</span><div><strong>${x}</strong><p>${escapeHtml(state.userName)} · ${i + 1} ${i === 0 ? 'min' : 'hr'} ago</p></div><span class="log-kind">${i === 2 ? 'ATTENTION' : 'SYSTEM'}</span></div>`).join('')}</div></section>`;
+  if (isActivity) return `<section class="page"><div class="page-heading"><div><p class="eyebrow">AUDIT LOG</p><h1>Activity</h1><p class="subheading">A clear record of every campaign action.</p></div></div><div class="activity-log">${state.activityList.length > 0 ? state.activityList.map((item, i) => `<div class="log-row"><span class="log-icon">${item.action.includes('FAIL') ? '!' : '✓'}</span><div><strong>${escapeHtml(formatAction(item.action, item.metadata))}</strong><p>${escapeHtml(state.userName)} · ${formatTimeAgo(item.createdAt)}</p></div><span class="log-kind">${item.action.includes('FAIL') ? 'ATTENTION' : 'SYSTEM'}</span></div>`).join('') : '<div style="padding: 32px; text-align: center; color: var(--text-muted, #888);">No activity recorded yet.</div>'}</div></section>`;
   return `<section class="page"><div class="page-heading"><div><p class="eyebrow">CAMPAIGN STUDIO</p><h1>Build an outreach campaign</h1><p class="subheading">Turn a spreadsheet into conversations that feel human.</p></div><div class="draft-status"><span class="status-dot"></span>${state.status}</div></div><div class="studio-grid"><div class="studio-main"><div class="stepper"><span class="step done">01 <b>Audience</b></span><span class="step-line"></span><span class="step active">02 <b>Intent & voice</b></span><span class="step-line"></span><span class="step">03 <b>Review & send</b></span></div><div class="studio-card"><div class="card-title"><div><h2>Choose your outreach intent</h2><p>Signalcraft adapts the message structure to your goal.</p></div></div><div class="intent-grid">${Object.entries(intents).map(([key,item]) => `<button class="intent-card ${state.intent === key ? 'selected' : ''}" data-intent="${key}"><span class="intent-icon">${item.icon}</span><strong>${item.label}</strong><small>${item.description}</small><span class="radio">${state.intent === key ? '●' : '○'}</span></button>`).join('')}</div><label class="field-label">CAMPAIGN NAME<input class="text-input" data-campaign-name value="${escapeHtml(state.campaignName)}" /></label><label class="field-label">GMAIL SENDER ACCOUNT<div class="sender-input ${state.gmailConnected ? 'gmail-ready' : ''}"><span class="gmail-mark">M</span><input data-email value="${escapeHtml(state.email)}" ${state.gmailConnected ? '' : 'placeholder="Connect Gmail first"'} /><button class="gmail-connect" data-action="gmail">${state.gmailConnected ? 'Disconnect' : 'Connect Gmail'}</button></div></label><p class="connection-help">${state.gmailConnected ? 'Gmail connected. Messages will be sent through your authorized account.' : 'Connect Gmail with OAuth before dispatching a campaign.'}</p><div class="upload-zone" data-action="upload"><span class="upload-icon">↥</span><div><strong>Drop a CSV or Excel file here</strong><p>or click to browse · ${state.rows.length} sample rows loaded</p></div><button class="outline-button small">Choose file</button></div><div class="mapping-head"><div><h3>Column mapping</h3><p>We found ${Object.keys(state.rows[0] || {}).length} columns in your file.</p></div><button class="text-button" data-action="regenerate">↻ Regenerate drafts</button></div><div class="mapping-list">${intents[state.intent].fields.slice(0,4).map((field,i) => `<div class="mapping-row"><span>${field}</span><span class="mapping-arrow">→</span><select><option>${Object.keys(state.rows[0] || {})[i] || field}</option></select><span class="mapping-check">✓</span></div>`).join('')}</div></div></div><aside class="preview-card"><div class="preview-head"><div><span class="eyebrow">LIVE PREVIEW</span><h2>Message drafts</h2></div><span class="draft-count">${state.drafts.length} drafts</span></div><div class="draft-tabs">${drafts.map((d,i) => `<button class="draft-tab ${state.selectedDraft === i ? 'active' : ''}" data-draft="${i}"><span>${d.name.slice(0,2).toUpperCase()}</span>${d.name.split(' ')[0]}</button>`).join('')}</div>${drafts.length ? `<div class="message-meta"><span>TO</span><strong>${drafts[state.selectedDraft]?.to}</strong></div><input class="subject-input" data-subject value="${escapeHtml(drafts[state.selectedDraft]?.subject || '')}" /><textarea class="body-input" data-body>${escapeHtml(drafts[state.selectedDraft]?.body || '')}</textarea><div class="preview-footer"><span>AI draft · editable</span><button class="primary-button send-button" data-action="send" ${state.gmailConnected ? '' : 'disabled title="Connect Gmail first"'}>Send campaign →</button></div>` : '<p>No matching drafts.</p>'}</aside></div></section>`;
 }
 
