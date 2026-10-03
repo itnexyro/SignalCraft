@@ -125,7 +125,7 @@ export async function handleRequest(req, res) {
   const parts = url.pathname.split('/').filter(Boolean);
   const store = await readStore();
   try {
-    if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'signalcraft-api', time: new Date().toISOString() }, req);
+    if (req.method === 'GET' && url.pathname === '/api/health') return json(res, 200, { ok: true, service: 'signalcraft-api', hasClientId: Boolean(process.env.GOOGLE_CLIENT_ID), hasClientSecret: Boolean(process.env.GOOGLE_CLIENT_SECRET), hasRedirectUri: Boolean(process.env.GOOGLE_REDIRECT_URI), hasGemini: Boolean(process.env.GEMINI_API_KEY), hasFirebase: Boolean(process.env.FIREBASE_SERVICE_ACCOUNT), time: new Date().toISOString() }, req);
     if (req.method === 'GET' && url.pathname === '/api/gmail/callback') {
       const stateToken = url.searchParams.get('state');
       const userId = getSessionUserId(store, `oauth:${stateToken}`);
